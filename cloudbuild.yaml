@@ -57,7 +57,6 @@ steps:
           --port 8080 \
           --allow-unauthenticated \
           --set-env-vars NODE_ENV=production,CORS_ORIGIN=https://localhost:3000 \
-          --set-secrets /app/.env=synchub-api:latest
 
 options:
   logging: CLOUD_LOGGING_ONLY
