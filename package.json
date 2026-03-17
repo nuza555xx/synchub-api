@@ -6,7 +6,19 @@
   "scripts": {
     "dev": "tsx watch src/app.ts",
     "build": "tsc",
-    "start": "node dist/app.js"
+    "start": "node dist/app.js",
+    "db:login": "npx supabase login",
+    "db:init": "npx supabase init",
+    "db:link": "npx supabase link",
+    "db:push": "npx supabase db push",
+    "db:reset": "npx supabase db reset",
+    "db:migration:new": "npx supabase migration new",
+    "db:migration:list": "npx supabase migration list",
+    "db:migration:up": "npx supabase migration up",
+    "db:migration:down": "npx supabase migration repair --status reverted",
+    "db:diff": "npx supabase db diff",
+    "db:status": "npx supabase db status",
+    "db:setup": "bash scripts/db-setup.sh"
   },
   "dependencies": {
     "@koa/bodyparser": "^6.1.0",

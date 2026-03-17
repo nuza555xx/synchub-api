@@ -23,19 +23,19 @@ spec:
             - name: NODE_ENV
               value: production
             - name: CORS_ORIGIN
-              value: https://synchub-web-1062785313682.asia-southeast1.run.app,http://localhost:3000
+              value: https://synchhub.com,http://localhost:3000
             - name: SUPABASE_URL
-              value: https://egnelppjyynxgjnchryc.supabase.co
+              value: https://eorlwdeujbszevuqzbsk.supabase.co
 
             - name: SUPABASE_ANON_KEY
               valueFrom:
                 secretKeyRef:
-                  key: '1'
+                  key: '2'
                   name: synchub-api-supabase-anon-key
             - name: SUPABASE_SERVICE_ROLE_KEY
               valueFrom:
                 secretKeyRef:
-                  key: '1'
+                  key: '2'
                   name: synchub-api-supabase-service-role-key
           startupProbe:
             httpGet:
