@@ -7,10 +7,12 @@ ENV NODE_ENV=production
 
 WORKDIR /app
 
-COPY package.json pnpm-lock.yaml ./
+COPY dist/ ./dist/
+
+COPY package.json pnpm-lock.yaml ./dist/
+
 RUN pnpm install --frozen-lockfile --prod --ignore-scripts
 
-COPY dist/ ./dist/
 
 EXPOSE 3001
 
