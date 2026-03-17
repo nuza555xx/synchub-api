@@ -37,6 +37,28 @@ spec:
                 secretKeyRef:
                   key: '2'
                   name: synchub-api-supabase-service-role-key
+            - name: AUTH_HASH_SECRET
+              valueFrom:
+                secretKeyRef:
+                  key: '1'
+                  name: synchub-api-auth-hash-secret
+            - name: TOKEN_ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  key: '1'
+                  name: synchub-api-token-encryption-key
+            - name: TIKTOK_CLIENT_KEY
+              valueFrom:
+                secretKeyRef:
+                  key: '1'
+                  name: synchub-api-tiktok-client-key
+            - name: TIKTOK_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  key: '1'
+                  name: synchub-api-tiktok-client-secret
+            - name: TIKTOK_REDIRECT_URI
+              value: https://synchhub.com/api/v1/social-accounts/callback/tiktok
           startupProbe:
             httpGet:
               path: /health
