@@ -52,9 +52,9 @@ steps:
           --image ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE_NAME}:$${IMAGE_TAG} \
           --region ${_REGION} \
           --platform managed \
-          --port ${_PORT} \
+          --port 8080 \
           --allow-unauthenticated \
-          --set-env-vars NODE_ENV=production,PORT=${_PORT},CORS_ORIGIN=${_CORS_ORIGIN} \
+          --set-env-vars NODE_ENV=production,PORT=8080,CORS_ORIGIN=http://localhost:3000 \
           --set-secrets /app/.env=synchub-api:latest
 
 options:
