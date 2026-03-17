@@ -13,6 +13,7 @@ import {
 import { ValidationError } from '../../../domain/errors/app-error';
 import * as EC from '../../../domain/enums/error-codes';
 import { SocialPlatform } from '../../../domain/entities/social-account';
+import { env } from '../../../config/env';
 
 export class SocialAccountController {
   constructor(
@@ -82,17 +83,30 @@ export class SocialAccountController {
       throw new ValidationError(parsed.error.errors[0].message, EC.SOCIAL400001);
     }
 
-    const result = await this.callbackUseCase.execute({
-      platform: platformParsed.data.platform as SocialPlatform,
-      code: parsed.data.code,
-      state: parsed.data.state!,
-    });
-    ctx.status = 200;
-    ctx.body = {
-      code: 'SOCIAL200004',
-      message: 'Social account connected',
-      result,
-    };
+    const redirectBase = `${env.frontendUrl}/social-accounts/callback`;
+
+    try {
+      const result = await this.callbackUseCase.execute({
+        platform: platformParsed.data.platform as SocialPlatform,
+        code: parsed.data.code,
+        state: parsed.data.state!,
+      });
+
+      const params = new URLSearchParams({
+        status: 'success',
+        platform: result.platform,
+        accountName: result.accountName,
+      });
+      ctx.redirect(`${redirectBase}?${params.toString()}`);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Connection failed';
+      const params = new URLSearchParams({
+        status: 'error',
+        platform: platformParsed.data.platform,
+        error: message,
+      });
+      ctx.redirect(`${redirectBase}?${params.toString()}`);
+    }
   };
 
   refreshToken = async (ctx: Context): Promise<void> => {

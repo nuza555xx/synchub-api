@@ -1,4 +1,5 @@
 import { randomBytes } from 'crypto';
+import axios from 'axios';
 import { env } from '../../config/env';
 import { AppError } from '../../domain/errors/app-error';
 import * as EC from '../../domain/enums/error-codes';
@@ -10,17 +11,29 @@ const TIKTOK_USER_INFO_URL = 'https://open.tiktokapis.com/v2/user/info/';
 
 export interface TikTokTokenResponse {
   access_token: string;
-  refresh_token: string;
   expires_in: number;
   open_id: string;
+  refresh_expires_in: number;
+  refresh_token: string;
   scope: string;
   token_type: string;
+}
+
+export interface TikTokTokenErrorResponse {
+  error: string;
+  error_description: string;
+  log_id: string;
 }
 
 export interface TikTokUserInfo {
   open_id: string;
   display_name: string;
   avatar_url: string;
+}
+
+export interface TikTokUserInfoResponse {
+  data: { user: TikTokUserInfo };
+  error: { code: string; message: string; log_id: string };
 }
 
 export class TikTokApiClient {
@@ -60,32 +73,34 @@ export class TikTokApiClient {
       code_length: code.length,
     });
 
-    const response = await fetch(TIKTOK_TOKEN_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: body.toString(),
-    });
+    try {
+      const { data } = await axios.post<TikTokTokenResponse & Partial<TikTokTokenErrorResponse>>(
+        TIKTOK_TOKEN_URL,
+        body.toString(),
+        { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } },
+      );
 
-    const data = (await response.json()) as Record<string, unknown>;
+      logger.info('TikTok token exchange response', { data });
 
-    logger.info('TikTok token exchange response', {
-      status: response.status,
-      data,
-    });
+      if (data.error) {
+        throw new AppError(
+          EC.SOCIAL400003,
+          data.error_description || 'Failed to exchange TikTok authorization code',
+          400,
+        );
+      }
 
-    if (!response.ok || data.error) {
-      logger.error('TikTok token exchange failed', {
-        status: response.status,
-        error: data,
-      });
+      return data;
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      const errData = axios.isAxiosError(error) ? error.response?.data as TikTokTokenErrorResponse : undefined;
+      logger.error('TikTok token exchange failed', { error: errData ?? error });
       throw new AppError(
         EC.SOCIAL400003,
-        (data.error_description as string) || 'Failed to exchange TikTok authorization code',
+        errData?.error_description || 'Failed to exchange TikTok authorization code',
         400,
       );
     }
-
-    return data as unknown as TikTokTokenResponse;
   }
 
   async refreshAccessToken(refreshToken: string): Promise<TikTokTokenResponse> {
@@ -96,53 +111,64 @@ export class TikTokApiClient {
       refresh_token: refreshToken,
     });
 
-    const response = await fetch(TIKTOK_TOKEN_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: body.toString(),
-    });
+    try {
+      const { data } = await axios.post<TikTokTokenResponse & Partial<TikTokTokenErrorResponse>>(
+        TIKTOK_TOKEN_URL,
+        body.toString(),
+        { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } },
+      );
 
-    const data = (await response.json()) as Record<string, unknown>;
-    if (!response.ok || data.error) {
-      logger.error('TikTok token refresh failed', { error: data });
+      if (data.error) {
+        throw new AppError(
+          EC.SOCIAL400004,
+          data.error_description || 'Failed to refresh TikTok token',
+          400,
+        );
+      }
+
+      return data;
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      const errData = axios.isAxiosError(error) ? error.response?.data as TikTokTokenErrorResponse : undefined;
+      logger.error('TikTok token refresh failed', { error: errData ?? error });
       throw new AppError(
         EC.SOCIAL400004,
-        (data.error_description as string) || 'Failed to refresh TikTok token',
+        errData?.error_description || 'Failed to refresh TikTok token',
         400,
       );
     }
-
-    return data as unknown as TikTokTokenResponse;
   }
 
   async getUserInfo(accessToken: string): Promise<TikTokUserInfo> {
-    const params = new URLSearchParams({
-      fields: 'open_id,display_name,avatar_url',
-    });
+    try {
+      const { data } = await axios.get<TikTokUserInfoResponse>(TIKTOK_USER_INFO_URL, {
+        params: { fields: 'open_id,display_name,avatar_url' },
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
 
-    const response = await fetch(`${TIKTOK_USER_INFO_URL}?${params.toString()}`, {
-      method: 'GET',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    });
+      if (data.error.code && data.error.code !== 'ok') {
+        throw new AppError(
+          EC.SOCIAL400003,
+          data.error.message || 'Failed to fetch TikTok user info',
+          400,
+        );
+      }
 
-    const data = (await response.json()) as Record<string, any>;
-    if (!response.ok || data.error?.code) {
-      logger.error('TikTok user info fetch failed', { error: data });
+      const user = data.data.user;
+      return {
+        open_id: user.open_id,
+        display_name: user.display_name,
+        avatar_url: user.avatar_url,
+      };
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      logger.error('TikTok user info fetch failed', { error });
       throw new AppError(
         EC.SOCIAL400003,
         'Failed to fetch TikTok user info',
         400,
       );
     }
-
-    const user = data.data?.user;
-    return {
-      open_id: user.open_id,
-      display_name: user.display_name,
-      avatar_url: user.avatar_url,
-    };
   }
 
   generateState(): string {
