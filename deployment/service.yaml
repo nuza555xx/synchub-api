@@ -25,20 +25,18 @@ spec:
             - name: CORS_ORIGIN
               value: https://synchub-web-1062785313682.asia-southeast1.run.app,http://localhost:3000
             - name: SUPABASE_URL
-              valueFrom:
-                secretKeyRef:
-                  key: 1
-                  name: SUPABASE_URL
+              value: https://egnelppjyynxgjnchryc.supabase.co
+
             - name: SUPABASE_ANON_KEY
               valueFrom:
                 secretKeyRef:
                   key: 1
-                  name: SUPABASE_ANON_KEY
+                  name: synchub-api-supabase-anon-key
             - name: SUPABASE_SERVICE_ROLE_KEY
               valueFrom:
                 secretKeyRef:
                   key: 1
-                  name: SUPABASE_SERVICE_ROLE_KEY
+                  name: synchub-api-supabase-service-role-key
           startupProbe:
             httpGet:
               path: /health
