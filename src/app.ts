@@ -38,6 +38,16 @@ const authController = new AuthController(
   new UpdateProfileUseCase(authRepo),
 );
 
+// --- Health Check ---
+app.use(async (ctx, next) => {
+  if (ctx.path === '/health' && ctx.method === 'GET') {
+    ctx.status = 200;
+    ctx.body = { status: 'ok' };
+    return;
+  }
+  await next();
+});
+
 // --- Middleware ---
 app.use(cors({
   origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
