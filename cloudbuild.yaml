@@ -28,22 +28,26 @@ steps:
     args:
       - '-c'
       - |
+        IMAGE_TAG="${TAG_NAME:-${COMMIT_SHA:0:7}}"
+        IMAGE="${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE_NAME}:${IMAGE_TAG}"
         echo "========================================="
         echo "Step 3: Building Docker image"
-        echo "Image: ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE_NAME}:${TAG_NAME}"
+        echo "Image: ${IMAGE}"
         echo "========================================="
-        docker build -t ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE_NAME}:${TAG_NAME} .
+        docker build -t ${IMAGE} .
 
   - name: 'gcr.io/cloud-builders/docker'
     entrypoint: 'bash'
     args:
       - '-c'
       - |
+        IMAGE_TAG="${TAG_NAME:-${COMMIT_SHA:0:6}}"
+        IMAGE="${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE_NAME}:${IMAGE_TAG}"
         echo "========================================="
         echo "Step 4: Pushing image to Artifact Registry"
-        echo "Image: ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE_NAME}:${TAG_NAME}"
+        echo "Image: ${IMAGE}"
         echo "========================================="
-        docker push ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE_NAME}:${TAG_NAME}
+        docker push ${IMAGE}
 
 images:
   - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE_NAME}:${TAG_NAME}'
