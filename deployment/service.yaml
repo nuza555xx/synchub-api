@@ -23,7 +23,7 @@ spec:
             - name: NODE_ENV
               value: production
             - name: CORS_ORIGIN
-              value: https://synchub-web-1062785313682.asia-southeast1.run.app,https://localhost:3000
+              value: https://synchub-web-1062785313682.asia-southeast1.run.app,http://localhost:3000
           volumeMounts:
             - name: secret-env
               mountPath: /app/dist/.env
