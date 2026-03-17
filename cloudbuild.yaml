@@ -51,6 +51,11 @@ steps:
         echo "Image: $${IMAGE}"
         sed -i "s|IMAGE_PLACEHOLDER|$${IMAGE}|g" deployment/service.yaml
         gcloud run services replace deployment/service.yaml --region asia-southeast1
+        echo "Step 6: Allowing unauthenticated access"
+        gcloud run services add-iam-policy-binding ${_SERVICE_NAME} \
+          --region=asia-southeast1 \
+          --member="allUsers" \
+          --role="roles/run.invoker"
 
 options:
   logging: CLOUD_LOGGING_ONLY

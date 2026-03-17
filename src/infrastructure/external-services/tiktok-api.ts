@@ -54,6 +54,12 @@ export class TikTokApiClient {
       redirect_uri: this.redirectUri,
     });
 
+    logger.info('TikTok token exchange request', {
+      url: TIKTOK_TOKEN_URL,
+      redirect_uri: this.redirectUri,
+      code_length: code.length,
+    });
+
     const response = await fetch(TIKTOK_TOKEN_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -61,8 +67,17 @@ export class TikTokApiClient {
     });
 
     const data = (await response.json()) as Record<string, unknown>;
+
+    logger.info('TikTok token exchange response', {
+      status: response.status,
+      data,
+    });
+
     if (!response.ok || data.error) {
-      logger.error('TikTok token exchange failed', { error: data });
+      logger.error('TikTok token exchange failed', {
+        status: response.status,
+        error: data,
+      });
       throw new AppError(
         EC.SOCIAL400003,
         (data.error_description as string) || 'Failed to exchange TikTok authorization code',

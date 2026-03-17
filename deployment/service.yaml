@@ -58,7 +58,7 @@ spec:
                   key: '1'
                   name: synchub-api-tiktok-client-secret
             - name: TIKTOK_REDIRECT_URI
-              value: https://synchhub.com/api/v1/social-accounts/callback/tiktok
+              value: https://api.synchhub.com/api/v1/social-accounts/callback/tiktok
           startupProbe:
             httpGet:
               path: /health
