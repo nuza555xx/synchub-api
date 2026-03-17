@@ -26,6 +26,8 @@ steps:
       - |
         IMAGE_TAG="${SHORT_SHA}"
         echo "Step 3: Building Docker image"
+        echo "Checking dist/ exists:"
+        ls -la dist/
         echo "Image: ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE_NAME}:$${IMAGE_TAG}"
         docker build -t ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE_NAME}:$${IMAGE_TAG} .
         echo "$${IMAGE_TAG}" > /workspace/image_tag

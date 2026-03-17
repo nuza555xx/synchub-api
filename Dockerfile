@@ -14,7 +14,4 @@ COPY dist/ ./dist/
 
 EXPOSE 8080
 
-USER node
-
-ENTRYPOINT ["dumb-init", "--"]
-CMD ["node", "dist/app.js"]
+CMD ["pnpm", "start"]
