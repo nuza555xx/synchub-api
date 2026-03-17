@@ -7,8 +7,8 @@ ENV NODE_ENV=production
 
 WORKDIR /app
 
-COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile --prod --ignore-scripts
+COPY package.json pnpm-lock.yaml ./dist/
+RUN cd dist && pnpm install --frozen-lockfile --prod --ignore-scripts
 
 COPY dist/ ./dist/
 
