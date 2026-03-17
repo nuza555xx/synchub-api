@@ -1,7 +1,8 @@
 node_modules
-dist
+src
 .env
 .env.*
 *.md
 .git
 .gitignore
+tsconfig.json
