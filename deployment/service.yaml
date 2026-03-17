@@ -11,7 +11,7 @@ spec:
         autoscaling.knative.dev/minScale: '0'
         autoscaling.knative.dev/maxScale: '3'
         run.googleapis.com/startup-cpu-boost: 'true'
-        run.googleapis.com/secrets: 'synchub-api:projects/1062785313682/secrets/synchub-api/versions/1'
+        run.googleapis.com/secrets: 'synchub-api:projects/1062785313682/secrets/synchub-api'
     spec:
       containerConcurrency: 80
       timeoutSeconds: 300
