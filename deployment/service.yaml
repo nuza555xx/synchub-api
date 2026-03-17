@@ -11,6 +11,7 @@ spec:
         autoscaling.knative.dev/minScale: '0'
         autoscaling.knative.dev/maxScale: '3'
         run.googleapis.com/startup-cpu-boost: 'true'
+        run.googleapis.com/secrets: 'synchub-api:projects/1062785313682/secrets/synchub-api/versions/1'
     spec:
       containerConcurrency: 80
       timeoutSeconds: 300
@@ -24,9 +25,26 @@ spec:
               value: production
             - name: CORS_ORIGIN
               value: https://synchub-web-1062785313682.asia-southeast1.run.app,http://localhost:3000
-          volumeMounts:
-            - name: secret-env
-              mountPath: /app
+            - name: SUPABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  key: latest
+                  name: SUPABASE_URL
+            - name: SUPABASE_ANON_KEY
+              valueFrom:
+                secretKeyRef:
+                  key: latest
+                  name: SUPABASE_ANON_KEY
+            - name: SUPABASE_SERVICE_ROLE_KEY
+              valueFrom:
+                secretKeyRef:
+                  key: latest
+                  name: SUPABASE_SERVICE_ROLE_KEY
+            - name: AUTH_HASH_SECRET
+              valueFrom:
+                secretKeyRef:
+                  key: latest
+                  name: AUTH_HASH_SECRET
           startupProbe:
             httpGet:
               path: /health
@@ -44,10 +62,3 @@ spec:
             limits:
               cpu: '1'
               memory: 128Mi
-      volumes:
-        - name: secret-env
-          secret:
-            secretName: synchub-api
-            items:
-              - key: '1'
-                path: .env
