@@ -50,7 +50,10 @@ app.use(async (ctx, next) => {
 
 // --- Middleware ---
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+  origin: (ctx) => {
+    const requestOrigin = ctx.get('Origin');
+    return env.corsOrigins.includes(requestOrigin) ? requestOrigin : '';
+  },
   credentials: true,
 }));
 app.use(errorHandler);
