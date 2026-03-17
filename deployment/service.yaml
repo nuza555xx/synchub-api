@@ -37,11 +37,6 @@ spec:
                 secretKeyRef:
                   key: '1'
                   name: synchub-api-supabase-service-role-key
-            - name: AUTH_HASH_SECRET
-              valueFrom:
-                secretKeyRef:
-                  key: '1'
-                  name: synchub-api-auth-hash-secret
           startupProbe:
             httpGet:
               path: /health
