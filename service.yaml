@@ -24,9 +24,26 @@ spec:
               value: production
             - name: CORS_ORIGIN
               value: https://localhost:3000
-          volumeMounts:
-            - name: secret-env
-              mountPath: /app/dist/.env
+            - name: SUPABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: synchub-api
+                  key: SUPABASE_URL
+            - name: SUPABASE_ANON_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: synchub-api
+                  key: SUPABASE_ANON_KEY
+            - name: SUPABASE_SERVICE_ROLE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: synchub-api
+                  key: SUPABASE_SERVICE_ROLE_KEY
+            - name: AUTH_HASH_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: synchub-api
+                  key: AUTH_HASH_SECRET
           startupProbe:
             httpGet:
               path: /health
