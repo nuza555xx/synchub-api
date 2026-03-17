@@ -129,7 +129,8 @@ export class SupabaseSocialAccountRepository implements ISocialAccountRepository
     const encryptedAccessToken = encryptToken(tokenData.access_token);
     const encryptedRefreshToken = encryptToken(tokenData.refresh_token);
 
-    const expiresAt = new Date(Date.now() + tokenData.expires_in * 1000).toISOString();
+    const expiresAt = new Date(Date.now() + tokenData.refresh_expires_in * 1000).toISOString();
+    const accessTokenExpiresAt = new Date(Date.now() + tokenData.expires_in * 1000).toISOString();
     const permissions = tokenData.scope ? tokenData.scope.split(',') : [];
 
     // Upsert social account (update if same platform + account_id exists)
@@ -152,6 +153,7 @@ export class SupabaseSocialAccountRepository implements ISocialAccountRepository
           access_token: encryptedAccessToken,
           refresh_token: encryptedRefreshToken,
           token_expires_at: expiresAt,
+          access_token_expires_at: accessTokenExpiresAt,
           permissions,
           updated_at: new Date().toISOString(),
         })
@@ -175,6 +177,7 @@ export class SupabaseSocialAccountRepository implements ISocialAccountRepository
           access_token: encryptedAccessToken,
           refresh_token: encryptedRefreshToken,
           token_expires_at: expiresAt,
+          access_token_expires_at: accessTokenExpiresAt,
           permissions,
           connected_at: new Date().toISOString(),
         })
@@ -223,7 +226,8 @@ export class SupabaseSocialAccountRepository implements ISocialAccountRepository
 
     const encryptedAccessToken = encryptToken(tokenData.access_token);
     const encryptedRefreshToken = encryptToken(tokenData.refresh_token);
-    const expiresAt = new Date(Date.now() + tokenData.expires_in * 1000).toISOString();
+    const expiresAt = new Date(Date.now() + tokenData.refresh_expires_in * 1000).toISOString();
+    const accessTokenExpiresAt = new Date(Date.now() + tokenData.expires_in * 1000).toISOString();
 
     const { error: updateError } = await admin
       .from('social_accounts')
@@ -231,6 +235,7 @@ export class SupabaseSocialAccountRepository implements ISocialAccountRepository
         access_token: encryptedAccessToken,
         refresh_token: encryptedRefreshToken,
         token_expires_at: expiresAt,
+        access_token_expires_at: accessTokenExpiresAt,
         updated_at: new Date().toISOString(),
       })
       .eq('id', input.socialAccountId);
