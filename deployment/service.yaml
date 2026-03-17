@@ -30,13 +30,18 @@ spec:
             - name: SUPABASE_ANON_KEY
               valueFrom:
                 secretKeyRef:
-                  key: 1
+                  key: '1'
                   name: synchub-api-supabase-anon-key
             - name: SUPABASE_SERVICE_ROLE_KEY
               valueFrom:
                 secretKeyRef:
-                  key: 1
+                  key: '1'
                   name: synchub-api-supabase-service-role-key
+            - name: AUTH_HASH_SECRET
+              valueFrom:
+                secretKeyRef:
+                  key: '1'
+                  name: synchub-api-auth-hash-secret
           startupProbe:
             httpGet:
               path: /health
