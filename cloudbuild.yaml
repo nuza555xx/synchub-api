@@ -28,26 +28,30 @@ steps:
     args:
       - '-c'
       - |
-        IMAGE_TAG="${TAG_NAME:-${COMMIT_SHA:0:7}}"
-        IMAGE="${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE_NAME}:${IMAGE_TAG}"
+        if [ -n "${TAG_NAME}" ]; then
+          IMAGE_TAG="${TAG_NAME}"
+        else
+          IMAGE_TAG="${SHORT_SHA}"
+        fi
         echo "========================================="
         echo "Step 3: Building Docker image"
-        echo "Image: ${IMAGE}"
+        echo "Image: ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE_NAME}:$${IMAGE_TAG}"
         echo "========================================="
-        docker build -t ${IMAGE} .
+        docker build -t ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE_NAME}:$${IMAGE_TAG} .
+        echo "$${IMAGE_TAG}" > /workspace/image_tag
 
   - name: 'gcr.io/cloud-builders/docker'
     entrypoint: 'bash'
     args:
       - '-c'
       - |
-        IMAGE_TAG="${TAG_NAME:-${COMMIT_SHA:0:6}}"
-        IMAGE="${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE_NAME}:${IMAGE_TAG}"
+        IMAGE_TAG=$$(cat /workspace/image_tag)
         echo "========================================="
         echo "Step 4: Pushing image to Artifact Registry"
-        echo "Image: ${IMAGE}"
+        echo "Image: ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE_NAME}:$${IMAGE_TAG}"
         echo "========================================="
-        docker push ${IMAGE}
+        docker push ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE_NAME}:$${IMAGE_TAG}
 
 options:
   logging: CLOUD_LOGGING_ONLY
+  substitution_option: ALLOW_LOOSE
