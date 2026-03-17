@@ -103,22 +103,21 @@ export class SupabaseSocialAccountRepository implements ISocialAccountRepository
 
     const admin = this.supabase.getAdmin();
 
-    // Verify state for CSRF protection
-    if (input.state) {
-      const { data: stateRow, error: stateError } = await admin
-        .from('social_oauth_states')
-        .select('*')
-        .eq('state', input.state)
-        .eq('user_id', input.userId)
-        .single();
+    // Verify state and resolve userId (no auth required on callback)
+    const { data: stateRow, error: stateError } = await admin
+      .from('social_oauth_states')
+      .select('*')
+      .eq('state', input.state)
+      .single();
 
-      if (stateError || !stateRow) {
-        throw new AppError(EC.SOCIAL400003, 'Invalid or expired OAuth state', 400);
-      }
-
-      // Clean up used state
-      await admin.from('social_oauth_states').delete().eq('state', input.state);
+    if (stateError || !stateRow) {
+      throw new AppError(EC.SOCIAL400003, 'Invalid or expired OAuth state', 400);
     }
+
+    const userId: string = stateRow.user_id;
+
+    // Clean up used state
+    await admin.from('social_oauth_states').delete().eq('state', input.state);
 
     // Exchange code for tokens
     const tokenData = await this.tiktokApi.exchangeCodeForToken(input.code);
@@ -137,7 +136,7 @@ export class SupabaseSocialAccountRepository implements ISocialAccountRepository
     const { data: existing } = await admin
       .from('social_accounts')
       .select('id')
-      .eq('user_id', input.userId)
+      .eq('user_id', userId)
       .eq('platform', input.platform)
       .eq('account_id', userInfo.open_id)
       .single();
@@ -168,7 +167,7 @@ export class SupabaseSocialAccountRepository implements ISocialAccountRepository
       const { data: inserted, error: insertError } = await admin
         .from('social_accounts')
         .insert({
-          user_id: input.userId,
+          user_id: userId,
           platform: input.platform,
           account_id: userInfo.open_id,
           account_name: userInfo.display_name,
@@ -189,7 +188,7 @@ export class SupabaseSocialAccountRepository implements ISocialAccountRepository
     }
 
     logger.info('TikTok account connected', {
-      userId: input.userId,
+      userId,
       platform: input.platform,
       accountId: userInfo.open_id,
     });

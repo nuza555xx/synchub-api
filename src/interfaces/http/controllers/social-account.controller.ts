@@ -82,12 +82,10 @@ export class SocialAccountController {
       throw new ValidationError(parsed.error.errors[0].message, EC.SOCIAL400001);
     }
 
-    const userId = ctx.state.user.id as string;
     const result = await this.callbackUseCase.execute({
-      userId,
       platform: platformParsed.data.platform as SocialPlatform,
       code: parsed.data.code,
-      state: parsed.data.state,
+      state: parsed.data.state!,
     });
     ctx.status = 200;
     ctx.body = {

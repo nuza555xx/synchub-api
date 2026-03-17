@@ -16,6 +16,10 @@
     {
       "key": "refreshToken",
       "value": ""
+    },
+    {
+      "key": "socialAccountId",
+      "value": ""
     }
   ],
   "auth": {
@@ -148,6 +152,105 @@
           "request": {
             "method": "POST",
             "url": "{{baseUrl}}/auth/logout"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Social Accounts",
+      "item": [
+        {
+          "name": "Connect TikTok",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/social-accounts/connect/tiktok",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"redirectUri\": \"http://localhost:3000/social-accounts/callback/tiktok\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const res = pm.response.json();",
+                  "  console.log('Auth URL:', res.result.authUrl);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Callback TikTok",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/social-accounts/callback/tiktok?code=AUTH_CODE_HERE&state=STATE_HERE",
+              "host": ["{{baseUrl}}"],
+              "path": ["social-accounts", "callback", "tiktok"],
+              "query": [
+                {
+                  "key": "code",
+                  "value": "AUTH_CODE_HERE"
+                },
+                {
+                  "key": "state",
+                  "value": "STATE_HERE"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const res = pm.response.json();",
+                  "  pm.collectionVariables.set('socialAccountId', res.result.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Social Accounts",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/social-accounts"
+          }
+        },
+        {
+          "name": "Get Account Health",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/social-accounts/{{socialAccountId}}/health"
+          }
+        },
+        {
+          "name": "Refresh Token",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/social-accounts/{{socialAccountId}}/refresh-token"
+          }
+        },
+        {
+          "name": "Disconnect Account",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/social-accounts/{{socialAccountId}}"
           }
         }
       ]

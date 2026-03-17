@@ -11,10 +11,9 @@ export interface ConnectSocialOutput {
 }
 
 export interface SocialCallbackInput {
-  userId: string;
   platform: SocialPlatform;
   code: string;
-  state?: string;
+  state: string;
 }
 
 export interface SocialCallbackOutput {

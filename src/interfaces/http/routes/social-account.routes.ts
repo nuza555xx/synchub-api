@@ -11,7 +11,7 @@ export function createSocialAccountRouter(
   router.get('/', authMiddleware, controller.list);
   router.get('/:id/health', authMiddleware, controller.getHealth);
   router.post('/connect/:platform', authMiddleware, controller.connect);
-  router.get('/callback/:platform', authMiddleware, controller.callback);
+  router.get('/callback/:platform', controller.callback);
   router.post('/:id/refresh-token', authMiddleware, controller.refreshToken);
   router.delete('/:id', authMiddleware, controller.disconnect);
 
