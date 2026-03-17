@@ -49,8 +49,8 @@ steps:
         IMAGE="${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE_NAME}:$${IMAGE_TAG}"
         echo "Step 5: Deploying to Cloud Run"
         echo "Image: $${IMAGE}"
-        sed -i "s|IMAGE_PLACEHOLDER|$${IMAGE}|g" service.yaml
-        gcloud run services replace service.yaml --region asia-southeast1
+        sed -i "s|IMAGE_PLACEHOLDER|$${IMAGE}|g" deployment/service.yaml
+        gcloud run services replace deployment/service.yaml --region asia-southeast1
 
 options:
   logging: CLOUD_LOGGING_ONLY
