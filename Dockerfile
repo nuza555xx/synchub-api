@@ -7,13 +7,15 @@ ENV NODE_ENV=production
 
 WORKDIR /app
 
-COPY dist/ ./dist/
-
-COPY package.json pnpm-lock.yaml ./dist/
-
+COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile --prod --ignore-scripts
 
+COPY dist/ ./dist/
 
 EXPOSE 3001
 
-CMD ["pnpm", "start"]
+USER node
+
+ENTRYPOINT ["dumb-init", "--"]
+
+CMD ["node", "dist/app.js"]
