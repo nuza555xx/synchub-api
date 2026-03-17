@@ -11,7 +11,6 @@ spec:
         autoscaling.knative.dev/minScale: '0'
         autoscaling.knative.dev/maxScale: '3'
         run.googleapis.com/startup-cpu-boost: 'true'
-        run.googleapis.com/secrets: 'synchub-api:projects/1062785313682/secrets/synchub-api'
     spec:
       containerConcurrency: 80
       timeoutSeconds: 300
@@ -28,23 +27,18 @@ spec:
             - name: SUPABASE_URL
               valueFrom:
                 secretKeyRef:
-                  key: latest
+                  key: 1
                   name: SUPABASE_URL
             - name: SUPABASE_ANON_KEY
               valueFrom:
                 secretKeyRef:
-                  key: latest
+                  key: 1
                   name: SUPABASE_ANON_KEY
             - name: SUPABASE_SERVICE_ROLE_KEY
               valueFrom:
                 secretKeyRef:
-                  key: latest
+                  key: 1
                   name: SUPABASE_SERVICE_ROLE_KEY
-            - name: AUTH_HASH_SECRET
-              valueFrom:
-                secretKeyRef:
-                  key: latest
-                  name: AUTH_HASH_SECRET
           startupProbe:
             httpGet:
               path: /health
