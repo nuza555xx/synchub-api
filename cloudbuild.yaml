@@ -54,9 +54,10 @@ steps:
           --image ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE_NAME}:$${IMAGE_TAG} \
           --region asia-southeast1 \
           --platform managed \
-          --port 8080 \
+          --port 3001 \
           --allow-unauthenticated \
           --set-env-vars NODE_ENV=production,CORS_ORIGIN=https://localhost:3000 \
+          --set-secrets /app/.env=synchub-api:latest
 
 options:
   logging: CLOUD_LOGGING_ONLY

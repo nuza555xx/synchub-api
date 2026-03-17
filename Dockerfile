@@ -12,6 +12,6 @@ RUN pnpm install --frozen-lockfile --prod --ignore-scripts
 
 COPY dist/ ./dist/
 
-EXPOSE 8080
+EXPOSE 3001
 
 CMD ["pnpm", "start"]
