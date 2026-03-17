@@ -26,8 +26,6 @@ steps:
       - |
         IMAGE_TAG="${SHORT_SHA}"
         echo "Step 3: Building Docker image"
-        echo "Checking dist/ exists:"
-        ls -la dist/
         echo "Image: ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE_NAME}:$${IMAGE_TAG}"
         docker build -t ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE_NAME}:$${IMAGE_TAG} .
         echo "$${IMAGE_TAG}" > /workspace/image_tag
@@ -48,16 +46,11 @@ steps:
       - '-c'
       - |
         IMAGE_TAG=$$(cat /workspace/image_tag)
+        IMAGE="${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE_NAME}:$${IMAGE_TAG}"
         echo "Step 5: Deploying to Cloud Run"
-        echo "Image: ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE_NAME}:$${IMAGE_TAG}"
-        gcloud run deploy ${_SERVICE_NAME} \
-          --image ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE_NAME}:$${IMAGE_TAG} \
-          --region asia-southeast1 \
-          --platform managed \
-          --port 3001 \
-          --allow-unauthenticated \
-          --set-env-vars NODE_ENV=production,CORS_ORIGIN=https://localhost:3000 \
-          --set-secrets /app/.env=synchub-api:latest \
+        echo "Image: $${IMAGE}"
+        sed -i "s|IMAGE_PLACEHOLDER|$${IMAGE}|g" service.yaml
+        gcloud run services replace service.yaml --region asia-southeast1
 
 options:
   logging: CLOUD_LOGGING_ONLY
