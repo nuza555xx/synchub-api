@@ -12,7 +12,7 @@ RUN pnpm install --frozen-lockfile --prod --ignore-scripts
 
 COPY dist/ ./dist/
 
-EXPOSE 3000
+EXPOSE 8080
 
 USER node
 
