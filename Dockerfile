@@ -1,31 +1,20 @@
-# --- Build stage ---
-FROM node:20.20.1-alpine3.22 AS build
+FROM node:22.16-alpine3.22
 
-RUN corepack enable && corepack prepare pnpm@latest --activate
+RUN apk add --no-cache dumb-init && apk update && apk upgrade --no-cache && rm -rf /var/cache/apk/*
+RUN corepack enable && corepack prepare pnpm@10.12.1 --activate
 
-WORKDIR /app
-
-COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile
-
-COPY tsconfig.json ./
-COPY src/ ./src/
-RUN pnpm build
-
-# --- Production stage ---
-FROM node:20.20.1-alpine3.22
-
-RUN corepack enable && corepack prepare pnpm@latest --activate
+ENV NODE_ENV=production
 
 WORKDIR /app
 
 COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile --prod
+RUN pnpm install --frozen-lockfile --prod --ignore-scripts
 
-COPY --from=build /app/dist ./dist
+COPY dist/ ./dist/
 
 EXPOSE 3000
 
 USER node
 
+ENTRYPOINT ["dumb-init", "--"]
 CMD ["node", "dist/app.js"]
