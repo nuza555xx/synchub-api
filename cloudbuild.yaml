@@ -28,11 +28,7 @@ steps:
     args:
       - '-c'
       - |
-        if [ -n "${TAG_NAME}" ]; then
-          IMAGE_TAG="${TAG_NAME}"
-        else
-          IMAGE_TAG="${SHORT_SHA}"
-        fi
+        IMAGE_TAG="${SHORT_SHA}"
         echo "========================================="
         echo "Step 3: Building Docker image"
         echo "Image: ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE_NAME}:$${IMAGE_TAG}"
@@ -54,4 +50,3 @@ steps:
 
 options:
   logging: CLOUD_LOGGING_ONLY
-  substitution_option: ALLOW_LOOSE
