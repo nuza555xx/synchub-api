@@ -4,9 +4,7 @@ steps:
     args:
       - '-c'
       - |
-        echo "========================================="
         echo "Step 1: Installing dependencies"
-        echo "========================================="
         corepack enable && corepack prepare pnpm@10.12.1 --activate
         pnpm install --frozen-lockfile --ignore-scripts
 
@@ -15,9 +13,7 @@ steps:
     args:
       - '-c'
       - |
-        echo "========================================="
         echo "Step 2: Building TypeScript artifacts"
-        echo "========================================="
         corepack enable && corepack prepare pnpm@10.12.1 --activate
         pnpm build
         echo "Build output:"
@@ -29,10 +25,8 @@ steps:
       - '-c'
       - |
         IMAGE_TAG="${SHORT_SHA}"
-        echo "========================================="
         echo "Step 3: Building Docker image"
         echo "Image: ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE_NAME}:$${IMAGE_TAG}"
-        echo "========================================="
         docker build -t ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE_NAME}:$${IMAGE_TAG} .
         echo "$${IMAGE_TAG}" > /workspace/image_tag
 
@@ -42,10 +36,8 @@ steps:
       - '-c'
       - |
         IMAGE_TAG=$$(cat /workspace/image_tag)
-        echo "========================================="
         echo "Step 4: Pushing image to Artifact Registry"
         echo "Image: ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE_NAME}:$${IMAGE_TAG}"
-        echo "========================================="
         docker push ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE_NAME}:$${IMAGE_TAG}
 
 options:
