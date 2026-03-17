@@ -9,4 +9,10 @@ export const env = {
   supabaseAnonKey: process.env.SUPABASE_ANON_KEY || '',
   supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY || '',
   authHashSecret: process.env.AUTH_HASH_SECRET || '',
+  tokenEncryptionKey: process.env.TOKEN_ENCRYPTION_KEY || '',
+  tiktok: {
+    clientKey: process.env.TIKTOK_CLIENT_KEY || '',
+    clientSecret: process.env.TIKTOK_CLIENT_SECRET || '',
+    redirectUri: process.env.TIKTOK_REDIRECT_URI || '',
+  },
 };

@@ -24,6 +24,15 @@ export const AUTH400004 = 'AUTH400004'; // Update profile failed
 export const AUTH400005 = 'AUTH400005'; // Invalid password signature
 export const AUTH403001 = 'AUTH403001'; // Forbidden (insufficient role)
 
+// ─── Social Accounts Module ─────────────────────────────────
+export const SOCIAL400001 = 'SOCIAL400001'; // Validation error (invalid input)
+export const SOCIAL400002 = 'SOCIAL400002'; // OAuth connect failed
+export const SOCIAL400003 = 'SOCIAL400003'; // OAuth callback failed (token exchange)
+export const SOCIAL400004 = 'SOCIAL400004'; // Token refresh failed
+export const SOCIAL400005 = 'SOCIAL400005'; // Unsupported platform
+export const SOCIAL400006 = 'SOCIAL400006'; // Token decryption failed
+export const SOCIAL404001 = 'SOCIAL404001'; // Social account not found
+
 // ─── System / Generic ───────────────────────────────────────
 export const SYS400001 = 'SYS400001'; // Generic validation error
 export const SYS404001 = 'SYS404001'; // Resource not found

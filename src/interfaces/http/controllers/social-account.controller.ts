@@ -1,0 +1,137 @@
+import { Context } from 'koa';
+import { ListSocialAccountsUseCase } from '../../../application/use-cases/social-accounts/list-social-accounts';
+import { GetSocialAccountHealthUseCase } from '../../../application/use-cases/social-accounts/get-social-account-health';
+import { ConnectSocialAccountUseCase } from '../../../application/use-cases/social-accounts/connect-social-account';
+import { SocialCallbackUseCase } from '../../../application/use-cases/social-accounts/social-callback';
+import { RefreshSocialTokenUseCase } from '../../../application/use-cases/social-accounts/refresh-social-token';
+import { DisconnectSocialAccountUseCase } from '../../../application/use-cases/social-accounts/disconnect-social-account';
+import {
+  connectPlatformSchema,
+  socialCallbackSchema,
+  socialAccountIdSchema,
+} from '../validators/social-account.validator';
+import { ValidationError } from '../../../domain/errors/app-error';
+import * as EC from '../../../domain/enums/error-codes';
+import { SocialPlatform } from '../../../domain/entities/social-account';
+
+export class SocialAccountController {
+  constructor(
+    private readonly listUseCase: ListSocialAccountsUseCase,
+    private readonly healthUseCase: GetSocialAccountHealthUseCase,
+    private readonly connectUseCase: ConnectSocialAccountUseCase,
+    private readonly callbackUseCase: SocialCallbackUseCase,
+    private readonly refreshTokenUseCase: RefreshSocialTokenUseCase,
+    private readonly disconnectUseCase: DisconnectSocialAccountUseCase,
+  ) {}
+
+  list = async (ctx: Context): Promise<void> => {
+    const userId = ctx.state.user.id as string;
+    const result = await this.listUseCase.execute(userId);
+    ctx.status = 200;
+    ctx.body = {
+      code: 'SOCIAL200001',
+      message: 'Social accounts retrieved',
+      result,
+    };
+  };
+
+  getHealth = async (ctx: Context): Promise<void> => {
+    const parsed = socialAccountIdSchema.safeParse({ id: ctx.params.id });
+    if (!parsed.success) {
+      throw new ValidationError(parsed.error.errors[0].message, EC.SOCIAL400001);
+    }
+
+    const userId = ctx.state.user.id as string;
+    const result = await this.healthUseCase.execute(parsed.data.id, userId);
+    ctx.status = 200;
+    ctx.body = {
+      code: 'SOCIAL200002',
+      message: 'Token health retrieved',
+      result,
+    };
+  };
+
+  connect = async (ctx: Context): Promise<void> => {
+    const parsed = connectPlatformSchema.safeParse({ platform: ctx.params.platform });
+    if (!parsed.success) {
+      throw new ValidationError(parsed.error.errors[0].message, EC.SOCIAL400001);
+    }
+
+    const userId = ctx.state.user.id as string;
+    const result = await this.connectUseCase.execute({
+      userId,
+      platform: parsed.data.platform as SocialPlatform,
+      redirectUri: '',
+    });
+    ctx.status = 200;
+    ctx.body = {
+      code: 'SOCIAL200003',
+      message: 'OAuth URL generated',
+      result,
+    };
+  };
+
+  callback = async (ctx: Context): Promise<void> => {
+    const platformParsed = connectPlatformSchema.safeParse({ platform: ctx.params.platform });
+    if (!platformParsed.success) {
+      throw new ValidationError(platformParsed.error.errors[0].message, EC.SOCIAL400001);
+    }
+
+    const parsed = socialCallbackSchema.safeParse(ctx.query);
+    if (!parsed.success) {
+      throw new ValidationError(parsed.error.errors[0].message, EC.SOCIAL400001);
+    }
+
+    const userId = ctx.state.user.id as string;
+    const result = await this.callbackUseCase.execute({
+      userId,
+      platform: platformParsed.data.platform as SocialPlatform,
+      code: parsed.data.code,
+      state: parsed.data.state,
+    });
+    ctx.status = 200;
+    ctx.body = {
+      code: 'SOCIAL200004',
+      message: 'Social account connected',
+      result,
+    };
+  };
+
+  refreshToken = async (ctx: Context): Promise<void> => {
+    const parsed = socialAccountIdSchema.safeParse({ id: ctx.params.id });
+    if (!parsed.success) {
+      throw new ValidationError(parsed.error.errors[0].message, EC.SOCIAL400001);
+    }
+
+    const userId = ctx.state.user.id as string;
+    const result = await this.refreshTokenUseCase.execute({
+      socialAccountId: parsed.data.id,
+      userId,
+    });
+    ctx.status = 200;
+    ctx.body = {
+      code: 'SOCIAL200005',
+      message: 'Token refreshed',
+      result,
+    };
+  };
+
+  disconnect = async (ctx: Context): Promise<void> => {
+    const parsed = socialAccountIdSchema.safeParse({ id: ctx.params.id });
+    if (!parsed.success) {
+      throw new ValidationError(parsed.error.errors[0].message, EC.SOCIAL400001);
+    }
+
+    const userId = ctx.state.user.id as string;
+    await this.disconnectUseCase.execute({
+      socialAccountId: parsed.data.id,
+      userId,
+    });
+    ctx.status = 200;
+    ctx.body = {
+      code: 'SOCIAL200006',
+      message: 'Social account disconnected',
+      result: null,
+    };
+  };
+}

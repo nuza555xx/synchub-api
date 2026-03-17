@@ -96,11 +96,11 @@ sync-hub/
 
 | File | Description |
 | ---- | ----------- |
-| `design/1-SyncHub Dashboard - Welcome/` | หน้า Welcome / Landing |
-| `design/2-SyncHub Dashboard - Sign In.html` | หน้า Sign In |
-| `design/3-SyncHub Dashboard - Onboarding.html` | หน้า Onboarding (step 1) |
-| `design/4-SyncHub Dashboard - Onboarding.html` | หน้า Onboarding (step 2) |
-| `design/5-SyncHub Dashboard - Social Int.html` | หน้า Social Integration |
+| `design/1-syncHub Dashboard - Welcome/` | หน้า Welcome / Landing |
+| `design/2-syncHub Dashboard - Sign In.html` | หน้า Sign In |
+| `design/3-syncHub Dashboard - Onboarding.html` | หน้า Onboarding (step 1) |
+| `design/4-syncHub Dashboard - Onboarding.html` | หน้า Onboarding (step 2) |
+| `design/5-syncHub Dashboard - Social Int.html` | หน้า Social Integration |
 
 ไฟล์เหล่านี้คือ mockup HTML ที่แสดง layout, สี, typography และ component structure ที่ต้อง implement ใน `synchub-web/`.
 

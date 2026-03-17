@@ -7,7 +7,9 @@ import { requestLogger } from './interfaces/http/middleware/request-logger';
 import { responseTransformer } from './interfaces/http/middleware/response-transformer';
 import { createAuthMiddleware } from './interfaces/http/middleware/auth';
 import { createAuthRouter } from './interfaces/http/routes/auth.routes';
+import { createSocialAccountRouter } from './interfaces/http/routes/social-account.routes';
 import { AuthController } from './interfaces/http/controllers/auth.controller';
+import { SocialAccountController } from './interfaces/http/controllers/social-account.controller';
 import { SupabaseClientFactory } from './infrastructure/database/supabase';
 import { SupabaseAuthRepository } from './infrastructure/repositories/supabase-auth-repository';
 import { SignupUseCase } from './application/use-cases/auth/signup';
@@ -18,6 +20,14 @@ import { GetMeUseCase } from './application/use-cases/auth/get-me';
 import { GoogleOAuthUseCase } from './application/use-cases/auth/google-oauth';
 import { OAuthCallbackUseCase } from './application/use-cases/auth/oauth-callback';
 import { UpdateProfileUseCase } from './application/use-cases/auth/update-profile';
+import { ListSocialAccountsUseCase } from './application/use-cases/social-accounts/list-social-accounts';
+import { GetSocialAccountHealthUseCase } from './application/use-cases/social-accounts/get-social-account-health';
+import { ConnectSocialAccountUseCase } from './application/use-cases/social-accounts/connect-social-account';
+import { SocialCallbackUseCase } from './application/use-cases/social-accounts/social-callback';
+import { RefreshSocialTokenUseCase } from './application/use-cases/social-accounts/refresh-social-token';
+import { DisconnectSocialAccountUseCase } from './application/use-cases/social-accounts/disconnect-social-account';
+import { SupabaseSocialAccountRepository } from './infrastructure/repositories/supabase-social-account-repository';
+import { TikTokApiClient } from './infrastructure/external-services/tiktok-api';
 import { logger } from './infrastructure/logger';
 
 const app = new Koa();
@@ -36,6 +46,17 @@ const authController = new AuthController(
   new GoogleOAuthUseCase(authRepo),
   new OAuthCallbackUseCase(authRepo),
   new UpdateProfileUseCase(authRepo),
+);
+
+const tiktokApi = new TikTokApiClient();
+const socialAccountRepo = new SupabaseSocialAccountRepository(supabaseFactory, tiktokApi);
+const socialAccountController = new SocialAccountController(
+  new ListSocialAccountsUseCase(socialAccountRepo),
+  new GetSocialAccountHealthUseCase(socialAccountRepo),
+  new ConnectSocialAccountUseCase(socialAccountRepo),
+  new SocialCallbackUseCase(socialAccountRepo),
+  new RefreshSocialTokenUseCase(socialAccountRepo),
+  new DisconnectSocialAccountUseCase(socialAccountRepo),
 );
 
 // --- Health Check ---
@@ -66,9 +87,13 @@ const authRouter = createAuthRouter(authController, authMiddleware);
 app.use(authRouter.routes());
 app.use(authRouter.allowedMethods());
 
+const socialAccountRouter = createSocialAccountRouter(socialAccountController, authMiddleware);
+app.use(socialAccountRouter.routes());
+app.use(socialAccountRouter.allowedMethods());
+
 // --- Start ---
 app.listen(env.port, () => {
-  logger.info(`SyncHub API running on http://localhost:${env.port}`);
+  logger.info(`syncHub API running on http://localhost:${env.port}`);
 });
 
 export default app;

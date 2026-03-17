@@ -1,8 +1,8 @@
 {
   "info": {
-    "name": "SyncHub API",
+    "name": "syncHub API",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "description": "SyncHub — Social Media Management Platform API"
+    "description": "syncHub — Social Media Management Platform API"
   },
   "variable": [
     {
