@@ -49,8 +49,5 @@ steps:
         echo "========================================="
         docker push ${IMAGE}
 
-images:
-  - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE_NAME}:${TAG_NAME}'
-
 options:
   logging: CLOUD_LOGGING_ONLY
