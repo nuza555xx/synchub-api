@@ -18,6 +18,7 @@ export function createDraftPostRouter(
   router.delete('/:id', authMiddleware, controller.delete);
   router.post('/:id/media', authMiddleware, upload.single('file'), controller.uploadMedia);
   router.delete('/:id/media', authMiddleware, controller.deleteMedia);
+  router.post('/:id/publish', authMiddleware, controller.publish);
 
   return router;
 }

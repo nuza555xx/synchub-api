@@ -28,3 +28,4 @@ export type ListDraftsCtx = TypedContext;
 export type DeleteDraftCtx = TypedContext<unknown, { id: string }>;
 export type UploadDraftMediaCtx = TypedContext<unknown, { id: string }>;
 export type DeleteDraftMediaCtx = TypedContext<{ mediaUrl: string }, { id: string }>;
+export type PublishPostCtx = TypedContext<{ privacyLevel?: string }, { id: string }>;

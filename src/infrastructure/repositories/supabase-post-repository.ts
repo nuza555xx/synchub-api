@@ -6,15 +6,24 @@ import {
   DeleteMediaInput,
   DraftPostOutput,
   UploadMediaOutput,
+  PublishPostInput,
+  PublishPostOutput,
+  PublishAccountResult,
 } from '@/application/dto/post.dto';
 import { SupabaseClientFactory } from '@/infrastructure/database/supabase';
+import { TikTokApiClient } from '@/infrastructure/external-services/tiktok-api';
+import { decryptToken } from '@/infrastructure/encryption/aes';
 import { AppError, NotFoundError } from '@/domain/errors/app-error';
 import * as EC from '@/domain/enums/error-codes';
 import { randomUUID } from 'crypto';
 import path from 'path';
+import { logger } from '@/infrastructure/logger';
 
 export class SupabaseDraftPostRepository implements IDraftPostRepository {
-  constructor(private readonly supabase: SupabaseClientFactory) {}
+  constructor(
+    private readonly supabase: SupabaseClientFactory,
+    private readonly tiktokApi: TikTokApiClient,
+  ) {}
 
   async create(input: CreateDraftInput): Promise<DraftPostOutput> {
     const admin = this.supabase.getAdmin();
@@ -210,6 +219,154 @@ export class SupabaseDraftPostRepository implements IDraftPostRepository {
       publishedAt: (row.published_at as string) || null,
       createdAt: row.created_at as string,
       updatedAt: row.updated_at as string,
+    };
+  }
+
+  async publish(input: PublishPostInput): Promise<PublishPostOutput> {
+    logger.info('Publish started', { postId: input.postId, userId: input.userId, privacyLevel: input.privacyLevel });
+    const admin = this.supabase.getAdmin();
+
+    // 1. Fetch the post
+    const { data: post, error: postError } = await admin
+      .from('posts')
+      .select('*')
+      .eq('id', input.postId)
+      .eq('user_id', input.userId)
+      .single();
+
+    if (postError || !post) {
+      throw new NotFoundError('Post not found');
+    }
+
+    const mediaUrls = (post.media_urls as string[]) || [];
+    if (mediaUrls.length === 0) {
+      throw new AppError(EC.POST400003, 'Post has no media to publish', 400);
+    }
+
+    const socialAccountIds = (post.social_account_ids as string[]) || [];
+    if (socialAccountIds.length === 0) {
+      throw new AppError(EC.POST400004, 'No social accounts selected', 400);
+    }
+
+    // 2. Fetch social accounts with tokens
+    const { data: accounts, error: accError } = await admin
+      .from('social_accounts')
+      .select('id, platform, access_token, token_expires_at, access_token_expires_at')
+      .in('id', socialAccountIds)
+      .eq('user_id', input.userId);
+
+    if (accError || !accounts || accounts.length === 0) {
+      logger.error('No valid social accounts found', { accError, socialAccountIds, userId: input.userId });
+      throw new AppError(EC.POST400004, 'No valid social accounts found', 400);
+    }
+
+    // 3. Publish to each account
+    const results: PublishAccountResult[] = [];
+    const title = (post.content as string) || (post.name as string) || '';
+    const mediaType = post.media_type as string;
+    logger.info('Publish details', {
+      postId: input.postId,
+      mediaType,
+      mediaCount: mediaUrls.length,
+      accountCount: accounts.length,
+      titleLength: title.length,
+    });
+
+    for (const account of accounts) {
+      const tokenExpiresAt = account.access_token_expires_at || account.token_expires_at;
+      const isTokenExpired = tokenExpiresAt ? new Date(tokenExpiresAt) <= new Date() : false;
+
+      if (isTokenExpired) {
+        results.push({
+          socialAccountId: account.id,
+          platform: account.platform,
+          success: false,
+          error: 'Account token is expired or revoked',
+        });
+        continue;
+      }
+
+      try {
+        const accessToken = decryptToken(account.access_token);
+
+        if (account.platform === 'tiktok') {
+          let publishResult: { publishId: string };
+
+          if (mediaType === 'video') {
+            publishResult = await this.tiktokApi.publishVideo(accessToken, {
+              title,
+              videoUrl: mediaUrls[0],
+              privacyLevel: input.privacyLevel,
+            });
+          } else {
+            publishResult = await this.tiktokApi.publishPhoto(accessToken, {
+              title,
+              photoUrls: mediaUrls,
+              privacyLevel: input.privacyLevel,
+            });
+          }
+
+          results.push({
+            socialAccountId: account.id,
+            platform: account.platform,
+            success: true,
+            publishId: publishResult.publishId,
+          });
+
+          // Poll publish status
+          try {
+            const status = await this.tiktokApi.getPublishStatus(accessToken, publishResult.publishId);
+            logger.info('TikTok publish status after publish', {
+              accountId: account.id,
+              publishId: publishResult.publishId,
+              status: status.status,
+              failReason: status.fail_reason,
+            });
+          } catch (statusErr) {
+            logger.warn('Failed to check publish status (non-blocking)', { accountId: account.id, error: statusErr });
+          }
+        } else {
+          results.push({
+            socialAccountId: account.id,
+            platform: account.platform,
+            success: false,
+            error: `Publishing to ${account.platform} is not yet supported`,
+          });
+        }
+      } catch (error) {
+        logger.error('Publish to account failed', { accountId: account.id, error });
+        results.push({
+          socialAccountId: account.id,
+          platform: account.platform,
+          success: false,
+          error: error instanceof AppError ? error.message : 'Publish failed',
+        });
+      }
+    }
+
+    // 4. Update post status based on results
+    logger.info('Publish results', {
+      postId: input.postId,
+      results: results.map((r) => ({ accountId: r.socialAccountId, platform: r.platform, success: r.success, error: r.error })),
+    });
+    const anySuccess = results.some((r) => r.success);
+    const newStatus = anySuccess ? 'published' : 'failed';
+    const now = new Date().toISOString();
+
+    await admin
+      .from('posts')
+      .update({
+        status: newStatus,
+        published_at: anySuccess ? now : null,
+        updated_at: now,
+      })
+      .eq('id', input.postId);
+
+    return {
+      id: input.postId,
+      status: newStatus,
+      publishedAt: anySuccess ? now : null,
+      results,
     };
   }
 }

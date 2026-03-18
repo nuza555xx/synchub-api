@@ -5,6 +5,8 @@ import {
   DeleteMediaInput,
   DraftPostOutput,
   UploadMediaOutput,
+  PublishPostInput,
+  PublishPostOutput,
 } from '@/application/dto/post.dto';
 
 export interface IDraftPostRepository {
@@ -15,4 +17,5 @@ export interface IDraftPostRepository {
   delete(id: string, userId: string): Promise<void>;
   uploadMedia(input: UploadMediaInput): Promise<UploadMediaOutput>;
   deleteMedia(input: DeleteMediaInput): Promise<void>;
+  publish(input: PublishPostInput): Promise<PublishPostOutput>;
 }

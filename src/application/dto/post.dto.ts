@@ -53,3 +53,24 @@ export interface DeleteMediaInput {
   userId: string;
   mediaUrl: string;
 }
+
+export interface PublishPostInput {
+  postId: string;
+  userId: string;
+  privacyLevel?: string;
+}
+
+export interface PublishPostOutput {
+  id: string;
+  status: DraftStatus;
+  publishedAt: string | null;
+  results: PublishAccountResult[];
+}
+
+export interface PublishAccountResult {
+  socialAccountId: string;
+  platform: string;
+  success: boolean;
+  publishId?: string;
+  error?: string;
+}

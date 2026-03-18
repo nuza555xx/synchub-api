@@ -25,7 +25,7 @@ spec:
             - name: CORS_ORIGIN
               value: https://synchhub.com,http://localhost:3000
             - name: SUPABASE_URL
-              value: https://eorlwdeujbszevuqzbsk.supabase.co
+              value: https://ds.synchhub.com
             - name: TIKTOK_REDIRECT_URI
               value: https://api.synchhub.com/api/v1/social-accounts/callback/tiktok
             - name: FRONTEND_URL

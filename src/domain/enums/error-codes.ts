@@ -35,6 +35,9 @@ export const SOCIAL404001 = 'SOCIAL404001'; // Social account not found
 
 // ─── Draft Posts Module ─────────────────────────────────────
 export const POST400001 = 'POST400001'; // Validation error (invalid input)
+export const POST400002 = 'POST400002'; // Publish failed
+export const POST400003 = 'POST400003'; // No media to publish
+export const POST400004 = 'POST400004'; // Account not connected or expired
 export const POST404001 = 'POST404001'; // Draft not found
 
 // ─── System / Generic ───────────────────────────────────────

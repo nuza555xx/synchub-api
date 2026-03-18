@@ -25,3 +25,7 @@ export const draftIdSchema = z.object({
 export const deleteMediaSchema = z.object({
   mediaUrl: z.string().url('Invalid media URL'),
 });
+
+export const publishPostSchema = z.object({
+  privacyLevel: z.enum(['PUBLIC_TO_EVERYONE', 'MUTUAL_FOLLOW_FRIENDS', 'FOLLOWER_OF_CREATOR', 'SELF_ONLY']).optional(),
+});

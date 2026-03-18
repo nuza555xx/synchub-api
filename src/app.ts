@@ -44,6 +44,7 @@ import { SupabaseActivityLogRepository } from './infrastructure/repositories/sup
 import { SupabaseDraftPostRepository } from './infrastructure/repositories/supabase-post-repository';
 import { TikTokApiClient } from './infrastructure/external-services/tiktok-api';
 import { logger } from './infrastructure/logger';
+import { PublishPostUseCase } from './application/use-cases/posts/publish-post';
 
 const app = new Koa();
 
@@ -80,7 +81,7 @@ const activityLogController = new ActivityLogController(
   new ListActivityLogsUseCase(activityLogRepo),
 );
 
-const draftPostRepo = new SupabaseDraftPostRepository(supabaseFactory);
+const draftPostRepo = new SupabaseDraftPostRepository(supabaseFactory, tiktokApi);
 const draftPostController = new DraftPostController(
   new CreateDraftPostUseCase(draftPostRepo),
   new UpdateDraftPostUseCase(draftPostRepo),
@@ -89,6 +90,7 @@ const draftPostController = new DraftPostController(
   new DeleteDraftPostUseCase(draftPostRepo),
   new UploadDraftMediaUseCase(draftPostRepo),
   new DeleteDraftMediaUseCase(draftPostRepo),
+  new PublishPostUseCase(draftPostRepo),
 );
 
 // --- Health Check ---

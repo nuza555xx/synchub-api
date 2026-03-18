@@ -6,6 +6,7 @@ import type {
   DeleteDraftCtx,
   UploadDraftMediaCtx,
   DeleteDraftMediaCtx,
+  PublishPostCtx,
 } from './types';
 import { getUserId } from '@/types/context';
 import { CreateDraftPostUseCase } from '@/application/use-cases/posts/create-post';
@@ -15,11 +16,13 @@ import { ListDraftPostsUseCase } from '@/application/use-cases/posts/list-posts'
 import { DeleteDraftPostUseCase } from '@/application/use-cases/posts/delete-post';
 import { UploadDraftMediaUseCase } from '@/application/use-cases/posts/upload-media';
 import { DeleteDraftMediaUseCase } from '@/application/use-cases/posts/delete-media';
+import { PublishPostUseCase } from '@/application/use-cases/posts/publish-post';
 import {
   createDraftSchema,
   updateDraftSchema,
   draftIdSchema,
   deleteMediaSchema,
+  publishPostSchema,
 } from '@/interfaces/http/validators/post.validator';
 import { ValidationError } from '@/domain/errors/app-error';
 import * as EC from '@/domain/enums/error-codes';
@@ -33,6 +36,7 @@ export class DraftPostController {
     private readonly deleteUseCase: DeleteDraftPostUseCase,
     private readonly uploadMediaUseCase: UploadDraftMediaUseCase,
     private readonly deleteMediaUseCase: DeleteDraftMediaUseCase,
+    private readonly publishUseCase: PublishPostUseCase,
   ) {}
 
   create = async (ctx: CreateDraftCtx): Promise<void> => {
@@ -186,6 +190,32 @@ export class DraftPostController {
     ctx.body = {
       code: 'POST200005',
       message: 'Media deleted',
+    };
+  };
+
+  publish = async (ctx: PublishPostCtx): Promise<void> => {
+    const idParsed = draftIdSchema.safeParse({ id: ctx.params.id });
+    if (!idParsed.success) {
+      throw new ValidationError(idParsed.error.errors[0].message, EC.POST400001);
+    }
+
+    const bodyParsed = publishPostSchema.safeParse(ctx.request.body || {});
+    if (!bodyParsed.success) {
+      throw new ValidationError(bodyParsed.error.errors[0].message, EC.POST400001);
+    }
+
+    const userId = getUserId(ctx);
+    const result = await this.publishUseCase.execute({
+      postId: idParsed.data.id,
+      userId,
+      privacyLevel: "SELF_ONLY", // Default to self only if not specified
+    });
+
+    ctx.status = 200;
+    ctx.body = {
+      code: 'POST200006',
+      message: 'Post published',
+      result,
     };
   };
 }
