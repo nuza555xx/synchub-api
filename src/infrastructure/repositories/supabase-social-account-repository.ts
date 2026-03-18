@@ -16,12 +16,14 @@ import { encryptToken, decryptToken } from '../encryption/aes';
 import { AppError, NotFoundError } from '../../domain/errors/app-error';
 import * as EC from '../../domain/enums/error-codes';
 import { TokenStatus } from '../../domain/entities/social-account';
+import { IActivityLogRepository } from '../../application/interfaces/activity-log-repository';
 import { logger } from '../logger';
 
 export class SupabaseSocialAccountRepository implements ISocialAccountRepository {
   constructor(
     private readonly supabase: SupabaseClientFactory,
     private readonly tiktokApi: TikTokApiClient,
+    private readonly activityLog: IActivityLogRepository,
   ) {}
 
   async listByUser(userId: string): Promise<SocialAccountOutput[]> {
@@ -196,6 +198,18 @@ export class SupabaseSocialAccountRepository implements ISocialAccountRepository
       accountId: userInfo.open_id,
     });
 
+    await this.activityLog.create({
+      userId,
+      action: 'social_account.connect',
+      resourceType: 'social_account',
+      resourceId: accountId,
+      details: {
+        platform: input.platform,
+        accountName: userInfo.display_name,
+        accountId: userInfo.open_id,
+      },
+    });
+
     return {
       id: accountId,
       platform: input.platform,
@@ -249,6 +263,14 @@ export class SupabaseSocialAccountRepository implements ISocialAccountRepository
       socialAccountId: input.socialAccountId,
     });
 
+    await this.activityLog.create({
+      userId: input.userId,
+      action: 'social_account.refresh',
+      resourceType: 'social_account',
+      resourceId: input.socialAccountId,
+      details: { platform: row.platform },
+    });
+
     return {
       tokenStatus: 'active',
       expiresAt,
@@ -280,6 +302,13 @@ export class SupabaseSocialAccountRepository implements ISocialAccountRepository
     logger.info('Social account disconnected', {
       userId: input.userId,
       socialAccountId: input.socialAccountId,
+    });
+
+    await this.activityLog.create({
+      userId: input.userId,
+      action: 'social_account.disconnect',
+      resourceType: 'social_account',
+      resourceId: input.socialAccountId,
     });
   }
 

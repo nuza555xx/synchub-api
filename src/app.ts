@@ -8,8 +8,10 @@ import { responseTransformer } from './interfaces/http/middleware/response-trans
 import { createAuthMiddleware } from './interfaces/http/middleware/auth';
 import { createAuthRouter } from './interfaces/http/routes/auth.routes';
 import { createSocialAccountRouter } from './interfaces/http/routes/social-account.routes';
+import { createActivityLogRouter } from './interfaces/http/routes/activity-log.routes';
 import { AuthController } from './interfaces/http/controllers/auth.controller';
 import { SocialAccountController } from './interfaces/http/controllers/social-account.controller';
+import { ActivityLogController } from './interfaces/http/controllers/activity-log.controller';
 import { SupabaseClientFactory } from './infrastructure/database/supabase';
 import { SupabaseAuthRepository } from './infrastructure/repositories/supabase-auth-repository';
 import { SignupUseCase } from './application/use-cases/auth/signup';
@@ -26,7 +28,9 @@ import { ConnectSocialAccountUseCase } from './application/use-cases/social-acco
 import { SocialCallbackUseCase } from './application/use-cases/social-accounts/social-callback';
 import { RefreshSocialTokenUseCase } from './application/use-cases/social-accounts/refresh-social-token';
 import { DisconnectSocialAccountUseCase } from './application/use-cases/social-accounts/disconnect-social-account';
+import { ListActivityLogsUseCase } from './application/use-cases/activity-logs/list-activity-logs';
 import { SupabaseSocialAccountRepository } from './infrastructure/repositories/supabase-social-account-repository';
+import { SupabaseActivityLogRepository } from './infrastructure/repositories/supabase-activity-log-repository';
 import { TikTokApiClient } from './infrastructure/external-services/tiktok-api';
 import { logger } from './infrastructure/logger';
 
@@ -49,7 +53,8 @@ const authController = new AuthController(
 );
 
 const tiktokApi = new TikTokApiClient();
-const socialAccountRepo = new SupabaseSocialAccountRepository(supabaseFactory, tiktokApi);
+const activityLogRepo = new SupabaseActivityLogRepository(supabaseFactory);
+const socialAccountRepo = new SupabaseSocialAccountRepository(supabaseFactory, tiktokApi, activityLogRepo);
 const socialAccountController = new SocialAccountController(
   new ListSocialAccountsUseCase(socialAccountRepo),
   new GetSocialAccountHealthUseCase(socialAccountRepo),
@@ -57,6 +62,10 @@ const socialAccountController = new SocialAccountController(
   new SocialCallbackUseCase(socialAccountRepo),
   new RefreshSocialTokenUseCase(socialAccountRepo),
   new DisconnectSocialAccountUseCase(socialAccountRepo),
+);
+
+const activityLogController = new ActivityLogController(
+  new ListActivityLogsUseCase(activityLogRepo),
 );
 
 // --- Health Check ---
@@ -90,6 +99,10 @@ app.use(authRouter.allowedMethods());
 const socialAccountRouter = createSocialAccountRouter(socialAccountController, authMiddleware);
 app.use(socialAccountRouter.routes());
 app.use(socialAccountRouter.allowedMethods());
+
+const activityLogRouter = createActivityLogRouter(activityLogController, authMiddleware);
+app.use(activityLogRouter.routes());
+app.use(activityLogRouter.allowedMethods());
 
 // --- Start ---
 app.listen(env.port, () => {
