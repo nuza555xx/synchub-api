@@ -9,9 +9,11 @@ import { createAuthMiddleware } from './interfaces/http/middleware/auth';
 import { createAuthRouter } from './interfaces/http/routes/auth.routes';
 import { createSocialAccountRouter } from './interfaces/http/routes/social-account.routes';
 import { createActivityLogRouter } from './interfaces/http/routes/activity-log.routes';
+import { createDraftPostRouter } from './interfaces/http/routes/post.routes';
 import { AuthController } from './interfaces/http/controllers/auth.controller';
 import { SocialAccountController } from './interfaces/http/controllers/social-account.controller';
 import { ActivityLogController } from './interfaces/http/controllers/activity-log.controller';
+import { DraftPostController } from './interfaces/http/controllers/post.controller';
 import { SupabaseClientFactory } from './infrastructure/database/supabase';
 import { SupabaseAuthRepository } from './infrastructure/repositories/supabase-auth-repository';
 import { SignupUseCase } from './application/use-cases/auth/signup';
@@ -30,8 +32,16 @@ import { HandleOAuthErrorUseCase } from './application/use-cases/social-accounts
 import { RefreshSocialTokenUseCase } from './application/use-cases/social-accounts/refresh-social-token';
 import { DisconnectSocialAccountUseCase } from './application/use-cases/social-accounts/disconnect-social-account';
 import { ListActivityLogsUseCase } from './application/use-cases/activity-logs/list-activity-logs';
+import { CreateDraftPostUseCase } from './application/use-cases/posts/create-post';
+import { UpdateDraftPostUseCase } from './application/use-cases/posts/update-post';
+import { GetDraftPostUseCase } from './application/use-cases/posts/get-post';
+import { ListDraftPostsUseCase } from './application/use-cases/posts/list-posts';
+import { DeleteDraftPostUseCase } from './application/use-cases/posts/delete-post';
+import { UploadDraftMediaUseCase } from './application/use-cases/posts/upload-media';
+import { DeleteDraftMediaUseCase } from './application/use-cases/posts/delete-media';
 import { SupabaseSocialAccountRepository } from './infrastructure/repositories/supabase-social-account-repository';
 import { SupabaseActivityLogRepository } from './infrastructure/repositories/supabase-activity-log-repository';
+import { SupabaseDraftPostRepository } from './infrastructure/repositories/supabase-post-repository';
 import { TikTokApiClient } from './infrastructure/external-services/tiktok-api';
 import { logger } from './infrastructure/logger';
 
@@ -70,6 +80,17 @@ const activityLogController = new ActivityLogController(
   new ListActivityLogsUseCase(activityLogRepo),
 );
 
+const draftPostRepo = new SupabaseDraftPostRepository(supabaseFactory);
+const draftPostController = new DraftPostController(
+  new CreateDraftPostUseCase(draftPostRepo),
+  new UpdateDraftPostUseCase(draftPostRepo),
+  new GetDraftPostUseCase(draftPostRepo),
+  new ListDraftPostsUseCase(draftPostRepo),
+  new DeleteDraftPostUseCase(draftPostRepo),
+  new UploadDraftMediaUseCase(draftPostRepo),
+  new DeleteDraftMediaUseCase(draftPostRepo),
+);
+
 // --- Health Check ---
 app.use(async (ctx, next) => {
   if (ctx.path === '/health' && ctx.method === 'GET') {
@@ -105,6 +126,10 @@ app.use(socialAccountRouter.allowedMethods());
 const activityLogRouter = createActivityLogRouter(activityLogController, authMiddleware);
 app.use(activityLogRouter.routes());
 app.use(activityLogRouter.allowedMethods());
+
+const draftPostRouter = createDraftPostRouter(draftPostController, authMiddleware);
+app.use(draftPostRouter.routes());
+app.use(draftPostRouter.allowedMethods());
 
 // --- Start ---
 app.listen(env.port, () => {

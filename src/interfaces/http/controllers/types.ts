@@ -19,3 +19,12 @@ export type DisconnectCtx = TypedContext<unknown, { id: string }>;
 
 // --- Activity Log Controller ---
 export type ListActivityLogsCtx = TypedContext<unknown, Record<string, string>, { page?: string; limit?: string; action?: string }>;
+
+// --- Draft Post Controller ---
+export type CreateDraftCtx = TypedContext<{ content?: string; mediaType: string; socialAccountIds?: string[] }>;
+export type UpdateDraftCtx = TypedContext<{ content?: string; socialAccountIds?: string[] }, { id: string }>;
+export type GetDraftCtx = TypedContext<unknown, { id: string }>;
+export type ListDraftsCtx = TypedContext;
+export type DeleteDraftCtx = TypedContext<unknown, { id: string }>;
+export type UploadDraftMediaCtx = TypedContext<unknown, { id: string }>;
+export type DeleteDraftMediaCtx = TypedContext<{ mediaUrl: string }, { id: string }>;

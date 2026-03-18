@@ -33,6 +33,10 @@ export const SOCIAL400005 = 'SOCIAL400005'; // Unsupported platform
 export const SOCIAL400006 = 'SOCIAL400006'; // Token decryption failed
 export const SOCIAL404001 = 'SOCIAL404001'; // Social account not found
 
+// ─── Draft Posts Module ─────────────────────────────────────
+export const POST400001 = 'POST400001'; // Validation error (invalid input)
+export const POST404001 = 'POST404001'; // Draft not found
+
 // ─── System / Generic ───────────────────────────────────────
 export const SYS400001 = 'SYS400001'; // Generic validation error
 export const SYS404001 = 'SYS404001'; // Resource not found
