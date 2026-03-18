@@ -5,7 +5,8 @@
   "packageManager": "pnpm@10.12.1",
   "scripts": {
     "dev": "tsx watch src/app.ts",
-    "build": "tsc",
+    "build": "swc src -d dist --strip-leading-paths --ignore '**/*.d.ts'",
+    "typecheck": "tsc --noEmit",
     "start": "node dist/app.js",
     "db:login": "npx supabase login",
     "db:init": "npx supabase init",
@@ -34,6 +35,8 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@swc/cli": "^0.8.0",
+    "@swc/core": "^1.15.18",
     "@types/koa": "^3.0.1",
     "@types/koa__cors": "^5.0.1",
     "@types/koa__router": "^12.0.5",

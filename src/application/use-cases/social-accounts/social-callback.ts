@@ -1,5 +1,5 @@
-import { ISocialAccountRepository } from '../../interfaces/social-account-repository';
-import { SocialCallbackInput, SocialCallbackOutput } from '../../dto/social-account.dto';
+import { ISocialAccountRepository } from '@/application/interfaces/social-account-repository';
+import { SocialCallbackInput, SocialCallbackOutput } from '@/application/dto/social-account.dto';
 
 export class SocialCallbackUseCase {
   constructor(private readonly repo: ISocialAccountRepository) {}

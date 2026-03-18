@@ -1,5 +1,5 @@
-import { IAuthRepository } from '../../interfaces/auth-repository';
-import { OAuthCallbackInput, OAuthCallbackOutput } from '../../dto/auth.dto';
+import { IAuthRepository } from '@/application/interfaces/auth-repository';
+import { OAuthCallbackInput, OAuthCallbackOutput } from '@/application/dto/auth.dto';
 
 export class OAuthCallbackUseCase {
   constructor(private readonly authRepo: IAuthRepository) {}

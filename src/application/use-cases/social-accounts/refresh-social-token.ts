@@ -1,5 +1,5 @@
-import { ISocialAccountRepository } from '../../interfaces/social-account-repository';
-import { RefreshSocialTokenInput, RefreshSocialTokenOutput } from '../../dto/social-account.dto';
+import { ISocialAccountRepository } from '@/application/interfaces/social-account-repository';
+import { RefreshSocialTokenInput, RefreshSocialTokenOutput } from '@/application/dto/social-account.dto';
 
 export class RefreshSocialTokenUseCase {
   constructor(private readonly repo: ISocialAccountRepository) {}

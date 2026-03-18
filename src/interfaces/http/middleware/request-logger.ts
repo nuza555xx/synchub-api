@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto';
 import { Context, Next } from 'koa';
-import { logger } from '../../../infrastructure/logger';
+import { logger } from '@/infrastructure/logger';
 
 export async function requestLogger(ctx: Context, next: Next): Promise<void> {
   const requestId = (ctx.get('X-Request-ID') as string) || randomUUID();

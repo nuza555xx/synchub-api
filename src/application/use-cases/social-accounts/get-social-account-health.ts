@@ -1,5 +1,5 @@
-import { ISocialAccountRepository } from '../../interfaces/social-account-repository';
-import { SocialAccountHealthOutput } from '../../dto/social-account.dto';
+import { ISocialAccountRepository } from '@/application/interfaces/social-account-repository';
+import { SocialAccountHealthOutput } from '@/application/dto/social-account.dto';
 
 export class GetSocialAccountHealthUseCase {
   constructor(private readonly repo: ISocialAccountRepository) {}

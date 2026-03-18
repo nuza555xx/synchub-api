@@ -1,9 +1,9 @@
 import { randomBytes } from "crypto";
 import axios from "axios";
-import { env } from "../../config/env";
-import { AppError } from "../../domain/errors/app-error";
-import * as EC from "../../domain/enums/error-codes";
-import { logger } from "../logger";
+import { env } from "@/config/env";
+import { AppError } from "@/domain/errors/app-error";
+import * as EC from "@/domain/enums/error-codes";
+import { logger } from "@/infrastructure/logger";
 
 const TIKTOK_AUTH_URL = "https://www.tiktok.com/v2/auth/authorize/";
 const TIKTOK_TOKEN_URL = "https://open.tiktokapis.com/v2/oauth/token/";
@@ -54,11 +54,12 @@ export class TikTokApiClient {
     this.redirectUri = env.tiktok.redirectUri;
   }
 
-  generateAuthUrl(state: string): string {
+  generateAuthUrl(state: string, scopes?: string[]): string {
+    const scope = scopes?.length ? scopes.join(',') : 'user.info.basic,user.info.profile,user.info.stats';
     const params = new URLSearchParams({
       client_key: this.clientKey,
       response_type: "code",
-      scope: "user.info.basic,user.info.profile,user.info.stats",
+      scope,
       redirect_uri: this.redirectUri,
       state,
     });
@@ -74,20 +75,12 @@ export class TikTokApiClient {
       redirect_uri: this.redirectUri,
     });
 
-    logger.info("TikTok token exchange request", {
-      url: TIKTOK_TOKEN_URL,
-      redirect_uri: this.redirectUri,
-      code_length: code.length,
-    });
-
     try {
       const { data } = await axios.post<
         TikTokTokenResponse & Partial<TikTokTokenErrorResponse>
       >(TIKTOK_TOKEN_URL, body.toString(), {
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
       });
-
-      logger.info("TikTok token exchange response", { data });
 
       if (data.error) {
         throw new AppError(

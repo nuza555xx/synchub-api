@@ -1,4 +1,4 @@
-import * as EC from '../enums/error-codes';
+import * as EC from '@/domain/enums/error-codes';
 
 export class AppError extends Error {
   constructor(

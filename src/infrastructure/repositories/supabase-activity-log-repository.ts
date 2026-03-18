@@ -1,13 +1,13 @@
-import { IActivityLogRepository } from '../../application/interfaces/activity-log-repository';
+import { IActivityLogRepository } from '@/application/interfaces/activity-log-repository';
 import {
   ListActivityLogsInput,
   ActivityLogListOutput,
   ActivityLogOutput,
   CreateActivityLogInput,
-} from '../../application/dto/activity-log.dto';
-import { SupabaseClientFactory } from '../database/supabase';
-import { AppError } from '../../domain/errors/app-error';
-import * as EC from '../../domain/enums/error-codes';
+} from '@/application/dto/activity-log.dto';
+import { SupabaseClientFactory } from '@/infrastructure/database/supabase';
+import { AppError } from '@/domain/errors/app-error';
+import * as EC from '@/domain/enums/error-codes';
 
 export class SupabaseActivityLogRepository implements IActivityLogRepository {
   constructor(private readonly supabase: SupabaseClientFactory) {}

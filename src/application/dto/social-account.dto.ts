@@ -1,9 +1,10 @@
-import { SocialPlatform, TokenStatus } from '../../domain/entities/social-account';
+import { SocialPlatform, TokenStatus } from '@/domain/entities/social-account';
 
 export interface ConnectSocialInput {
   userId: string;
   platform: SocialPlatform;
   redirectUri: string;
+  scopes: string[];
 }
 
 export interface ConnectSocialOutput {

@@ -8,7 +8,7 @@ import {
   RefreshSocialTokenInput,
   RefreshSocialTokenOutput,
   DisconnectSocialInput,
-} from '../dto/social-account.dto';
+} from '@/application/dto/social-account.dto';
 
 export interface ISocialAccountRepository {
   listByUser(userId: string): Promise<SocialAccountOutput[]>;

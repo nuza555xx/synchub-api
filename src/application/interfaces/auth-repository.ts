@@ -11,7 +11,7 @@ import {
   OAuthCallbackOutput,
   UpdateProfileInput,
   UpdateProfileOutput,
-} from '../dto/auth.dto';
+} from '@/application/dto/auth.dto';
 
 export interface IAuthRepository {
   signup(input: SignupInput): Promise<SignupOutput>;

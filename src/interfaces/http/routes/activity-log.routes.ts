@@ -1,5 +1,5 @@
 import Router from '@koa/router';
-import { ActivityLogController } from '../controllers/activity-log.controller';
+import { ActivityLogController } from '@/interfaces/http/controllers/activity-log.controller';
 import { Middleware } from 'koa';
 
 export function createActivityLogRouter(

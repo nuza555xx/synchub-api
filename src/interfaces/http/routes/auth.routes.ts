@@ -1,5 +1,5 @@
 import Router from '@koa/router';
-import { AuthController } from '../controllers/auth.controller';
+import { AuthController } from '@/interfaces/http/controllers/auth.controller';
 import { Middleware } from 'koa';
 
 export function createAuthRouter(controller: AuthController, authMiddleware: Middleware): Router {

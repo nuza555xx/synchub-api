@@ -1,7 +1,7 @@
 import { Context, Next } from 'koa';
-import { SupabaseClientFactory } from '../../../infrastructure/database/supabase';
-import { UnauthorizedError } from '../../../domain/errors/app-error';
-import * as EC from '../../../domain/enums/error-codes';
+import { SupabaseClientFactory } from '@/infrastructure/database/supabase';
+import { UnauthorizedError } from '@/domain/errors/app-error';
+import * as EC from '@/domain/enums/error-codes';
 
 export function createAuthMiddleware(supabase: SupabaseClientFactory) {
   return async (ctx: Context, next: Next): Promise<void> => {

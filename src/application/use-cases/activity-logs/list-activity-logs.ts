@@ -1,5 +1,5 @@
-import { IActivityLogRepository } from '../../interfaces/activity-log-repository';
-import { ListActivityLogsInput, ActivityLogListOutput } from '../../dto/activity-log.dto';
+import { IActivityLogRepository } from '@/application/interfaces/activity-log-repository';
+import { ListActivityLogsInput, ActivityLogListOutput } from '@/application/dto/activity-log.dto';
 
 export class ListActivityLogsUseCase {
   constructor(private readonly repo: IActivityLogRepository) {}

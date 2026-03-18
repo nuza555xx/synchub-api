@@ -1,5 +1,5 @@
 import Router from '@koa/router';
-import { SocialAccountController } from '../controllers/social-account.controller';
+import { SocialAccountController } from '@/interfaces/http/controllers/social-account.controller';
 import { Middleware } from 'koa';
 
 export function createSocialAccountRouter(

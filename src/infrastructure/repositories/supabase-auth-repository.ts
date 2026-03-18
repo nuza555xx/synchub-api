@@ -1,4 +1,4 @@
-import { IAuthRepository } from '../../application/interfaces/auth-repository';
+import { IAuthRepository } from '@/application/interfaces/auth-repository';
 import {
   SignupInput,
   SignupOutput,
@@ -12,10 +12,10 @@ import {
   OAuthCallbackOutput,
   UpdateProfileInput,
   UpdateProfileOutput,
-} from '../../application/dto/auth.dto';
-import { SupabaseClientFactory } from '../database/supabase';
-import { AppError, UnauthorizedError } from '../../domain/errors/app-error';
-import * as EC from '../../domain/enums/error-codes';
+} from '@/application/dto/auth.dto';
+import { SupabaseClientFactory } from '@/infrastructure/database/supabase';
+import { AppError, UnauthorizedError } from '@/domain/errors/app-error';
+import * as EC from '@/domain/enums/error-codes';
 
 export class SupabaseAuthRepository implements IAuthRepository {
   constructor(private readonly supabase: SupabaseClientFactory) {}

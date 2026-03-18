@@ -1,5 +1,5 @@
-import { IAuthRepository } from '../../interfaces/auth-repository';
-import { UpdateProfileInput, UpdateProfileOutput } from '../../dto/auth.dto';
+import { IAuthRepository } from '@/application/interfaces/auth-repository';
+import { UpdateProfileInput, UpdateProfileOutput } from '@/application/dto/auth.dto';
 
 export class UpdateProfileUseCase {
   constructor(private readonly authRepo: IAuthRepository) {}

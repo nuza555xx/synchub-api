@@ -1,23 +1,25 @@
-import { Context } from "koa";
-import { SignupUseCase } from "../../../application/use-cases/auth/signup";
-import { LoginUseCase } from "../../../application/use-cases/auth/login";
-import { LogoutUseCase } from "../../../application/use-cases/auth/logout";
-import { RefreshUseCase } from "../../../application/use-cases/auth/refresh";
-import { GetMeUseCase } from "../../../application/use-cases/auth/get-me";
-import { GoogleOAuthUseCase } from "../../../application/use-cases/auth/google-oauth";
-import { OAuthCallbackUseCase } from "../../../application/use-cases/auth/oauth-callback";
-import { UpdateProfileUseCase } from "../../../application/use-cases/auth/update-profile";
+import type { TypedContext } from '@/types/koa';
+import { getAccessToken } from '@/types/context';
+import type { SignupCtx, LoginCtx, RefreshCtx, GoogleOAuthCtx, OAuthCallbackCtx, UpdateProfileCtx } from './types';
+import { SignupUseCase } from "@/application/use-cases/auth/signup";
+import { LoginUseCase } from "@/application/use-cases/auth/login";
+import { LogoutUseCase } from "@/application/use-cases/auth/logout";
+import { RefreshUseCase } from "@/application/use-cases/auth/refresh";
+import { GetMeUseCase } from "@/application/use-cases/auth/get-me";
+import { GoogleOAuthUseCase } from "@/application/use-cases/auth/google-oauth";
+import { OAuthCallbackUseCase } from "@/application/use-cases/auth/oauth-callback";
+import { UpdateProfileUseCase } from "@/application/use-cases/auth/update-profile";
 import {
   signupSchema,
   loginSchema,
   refreshSchema,
   oauthCallbackSchema,
   updateProfileSchema,
-} from "../validators/auth.validator";
-import { ValidationError } from "../../../domain/errors/app-error";
-import { AppError } from "../../../domain/errors/app-error";
-import * as EC from "../../../domain/enums/error-codes";
-import { verifyPasswordSignature } from "../../../infrastructure/encryption/verify-signature";
+} from "@/interfaces/http/validators/auth.validator";
+import { ValidationError } from "@/domain/errors/app-error";
+import { AppError } from "@/domain/errors/app-error";
+import * as EC from "@/domain/enums/error-codes";
+import { verifyPasswordSignature } from "@/infrastructure/encryption/verify-signature";
 
 export class AuthController {
   constructor(
@@ -31,8 +33,8 @@ export class AuthController {
     private readonly updateProfileUseCase: UpdateProfileUseCase,
   ) {}
 
-  signup = async (ctx: Context): Promise<void> => {
-    const parsed = signupSchema.safeParse((ctx.request as any).body);
+  signup = async (ctx: SignupCtx): Promise<void> => {
+    const parsed = signupSchema.safeParse(ctx.request.body);
     if (!parsed.success) {
       throw new ValidationError(parsed.error.errors[0].message, EC.AUTH400001);
     }
@@ -53,8 +55,8 @@ export class AuthController {
     };
   };
 
-  login = async (ctx: Context): Promise<void> => {
-    const parsed = loginSchema.safeParse((ctx.request as any).body);
+  login = async (ctx: LoginCtx): Promise<void> => {
+    const parsed = loginSchema.safeParse(ctx.request.body);
     if (!parsed.success) {
       throw new ValidationError(parsed.error.errors[0].message, EC.AUTH400001);
     }
@@ -75,8 +77,8 @@ export class AuthController {
     };
   };
 
-  logout = async (ctx: Context): Promise<void> => {
-    const token = ctx.state.accessToken as string;
+  logout = async (ctx: TypedContext): Promise<void> => {
+    const token = getAccessToken(ctx);
     await this.logoutUseCase.execute(token);
     ctx.status = 200;
     ctx.body = {
@@ -86,8 +88,8 @@ export class AuthController {
     };
   };
 
-  refresh = async (ctx: Context): Promise<void> => {
-    const parsed = refreshSchema.safeParse((ctx.request as any).body);
+  refresh = async (ctx: RefreshCtx): Promise<void> => {
+    const parsed = refreshSchema.safeParse(ctx.request.body);
     if (!parsed.success) {
       throw new ValidationError(parsed.error.errors[0].message, EC.AUTH400001);
     }
@@ -103,8 +105,8 @@ export class AuthController {
     };
   };
 
-  getMe = async (ctx: Context): Promise<void> => {
-    const token = ctx.state.accessToken as string;
+  getMe = async (ctx: TypedContext): Promise<void> => {
+    const token = getAccessToken(ctx);
     const result = await this.getMeUseCase.execute(token);
     ctx.status = 200;
     ctx.body = {
@@ -114,8 +116,8 @@ export class AuthController {
     };
   };
 
-  googleOAuth = async (ctx: Context): Promise<void> => {
-    const redirectTo = (ctx.query.redirectTo as string) || `${ctx.origin}/api/v1/auth/callback`;
+  googleOAuth = async (ctx: GoogleOAuthCtx): Promise<void> => {
+    const redirectTo = ctx.query.redirectTo || `${ctx.origin}/api/v1/auth/callback`;
     const result = await this.googleOAuthUseCase.execute(redirectTo);
     ctx.status = 200;
     ctx.body = {
@@ -125,8 +127,8 @@ export class AuthController {
     };
   };
 
-  oauthCallback = async (ctx: Context): Promise<void> => {
-    const parsed = oauthCallbackSchema.safeParse((ctx.request as any).body);
+  oauthCallback = async (ctx: OAuthCallbackCtx): Promise<void> => {
+    const parsed = oauthCallbackSchema.safeParse(ctx.request.body);
     if (!parsed.success) {
       throw new ValidationError(parsed.error.errors[0].message, EC.AUTH400001);
     }
@@ -140,13 +142,13 @@ export class AuthController {
     };
   };
 
-  updateProfile = async (ctx: Context): Promise<void> => {
-    const parsed = updateProfileSchema.safeParse((ctx.request as any).body);
+  updateProfile = async (ctx: UpdateProfileCtx): Promise<void> => {
+    const parsed = updateProfileSchema.safeParse(ctx.request.body);
     if (!parsed.success) {
       throw new ValidationError(parsed.error.errors[0].message, EC.AUTH400001);
     }
 
-    const token = ctx.state.accessToken as string;
+    const token = getAccessToken(ctx);
     const result = await this.updateProfileUseCase.execute(token, parsed.data);
     ctx.status = 200;
     ctx.body = {

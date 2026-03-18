@@ -1,5 +1,5 @@
-import { ISocialAccountRepository } from '../../interfaces/social-account-repository';
-import { DisconnectSocialInput } from '../../dto/social-account.dto';
+import { ISocialAccountRepository } from '@/application/interfaces/social-account-repository';
+import { DisconnectSocialInput } from '@/application/dto/social-account.dto';
 
 export class DisconnectSocialAccountUseCase {
   constructor(private readonly repo: ISocialAccountRepository) {}

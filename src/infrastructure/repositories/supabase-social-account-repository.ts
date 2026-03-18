@@ -1,4 +1,4 @@
-import { ISocialAccountRepository } from '../../application/interfaces/social-account-repository';
+import { ISocialAccountRepository } from '@/application/interfaces/social-account-repository';
 import {
   ConnectSocialInput,
   ConnectSocialOutput,
@@ -9,15 +9,15 @@ import {
   RefreshSocialTokenInput,
   RefreshSocialTokenOutput,
   DisconnectSocialInput,
-} from '../../application/dto/social-account.dto';
-import { SupabaseClientFactory } from '../database/supabase';
-import { TikTokApiClient } from '../external-services/tiktok-api';
-import { encryptToken, decryptToken } from '../encryption/aes';
-import { AppError, NotFoundError } from '../../domain/errors/app-error';
-import * as EC from '../../domain/enums/error-codes';
-import { TokenStatus } from '../../domain/entities/social-account';
-import { IActivityLogRepository } from '../../application/interfaces/activity-log-repository';
-import { logger } from '../logger';
+} from '@/application/dto/social-account.dto';
+import { SupabaseClientFactory } from '@/infrastructure/database/supabase';
+import { TikTokApiClient } from '@/infrastructure/external-services/tiktok-api';
+import { encryptToken, decryptToken } from '@/infrastructure/encryption/aes';
+import { AppError, NotFoundError } from '@/domain/errors/app-error';
+import * as EC from '@/domain/enums/error-codes';
+import { TokenStatus } from '@/domain/entities/social-account';
+import { IActivityLogRepository } from '@/application/interfaces/activity-log-repository';
+import { logger } from '@/infrastructure/logger';
 
 export class SupabaseSocialAccountRepository implements ISocialAccountRepository {
   constructor(
@@ -100,7 +100,7 @@ export class SupabaseSocialAccountRepository implements ISocialAccountRepository
       created_at: new Date().toISOString(),
     });
 
-    const authUrl = this.tiktokApi.generateAuthUrl(state);
+    const authUrl = this.tiktokApi.generateAuthUrl(state, input.scopes);
     return { authUrl };
   }
 

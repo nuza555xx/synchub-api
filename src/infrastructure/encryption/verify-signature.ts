@@ -1,5 +1,5 @@
 import { createHmac, timingSafeEqual } from 'crypto';
-import { env } from '../../config/env';
+import { env } from '@/config/env';
 
 /**
  * Verify that a password hash was signed with the correct shared secret.

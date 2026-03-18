@@ -2,7 +2,7 @@ import {
   ListActivityLogsInput,
   ActivityLogListOutput,
   CreateActivityLogInput,
-} from '../dto/activity-log.dto';
+} from '@/application/dto/activity-log.dto';
 
 export interface IActivityLogRepository {
   list(input: ListActivityLogsInput): Promise<ActivityLogListOutput>;

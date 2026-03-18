@@ -1,7 +1,7 @@
 import { createCipheriv, createDecipheriv, randomBytes } from 'crypto';
-import { env } from '../../config/env';
-import { AppError } from '../../domain/errors/app-error';
-import * as EC from '../../domain/enums/error-codes';
+import { env } from '@/config/env';
+import { AppError } from '@/domain/errors/app-error';
+import * as EC from '@/domain/enums/error-codes';
 
 const ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 16;

@@ -1,6 +1,6 @@
 import { Context, Next } from "koa";
-import { AppError } from "../../../domain/errors/app-error";
-import { logger } from "../../../infrastructure/logger";
+import { AppError } from "@/domain/errors/app-error";
+import { logger } from "@/infrastructure/logger";
 
 export async function errorHandler(ctx: Context, next: Next): Promise<void> {
   try {

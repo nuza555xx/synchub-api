@@ -1,5 +1,5 @@
-import { IAuthRepository } from '../../interfaces/auth-repository';
-import { LoginInput, LoginOutput } from '../../dto/auth.dto';
+import { IAuthRepository } from '@/application/interfaces/auth-repository';
+import { LoginInput, LoginOutput } from '@/application/dto/auth.dto';
 
 export class LoginUseCase {
   constructor(private readonly authRepo: IAuthRepository) {}

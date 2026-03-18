@@ -1,5 +1,5 @@
-import { IAuthRepository } from '../../interfaces/auth-repository';
-import { RefreshInput, RefreshOutput } from '../../dto/auth.dto';
+import { IAuthRepository } from '@/application/interfaces/auth-repository';
+import { RefreshInput, RefreshOutput } from '@/application/dto/auth.dto';
 
 export class RefreshUseCase {
   constructor(private readonly authRepo: IAuthRepository) {}

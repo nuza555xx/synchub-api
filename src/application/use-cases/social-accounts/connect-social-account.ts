@@ -1,5 +1,5 @@
-import { ISocialAccountRepository } from '../../interfaces/social-account-repository';
-import { ConnectSocialInput, ConnectSocialOutput } from '../../dto/social-account.dto';
+import { ISocialAccountRepository } from '@/application/interfaces/social-account-repository';
+import { ConnectSocialInput, ConnectSocialOutput } from '@/application/dto/social-account.dto';
 
 export class ConnectSocialAccountUseCase {
   constructor(private readonly repo: ISocialAccountRepository) {}
