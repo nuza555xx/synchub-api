@@ -64,3 +64,10 @@ export interface DisconnectSocialInput {
   socialAccountId: string;
   userId: string;
 }
+
+export interface OAuthErrorInput {
+  platform: SocialPlatform;
+  state: string;
+  error: string;
+  errorDescription: string;
+}

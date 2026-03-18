@@ -9,6 +9,7 @@ import {
   RefreshSocialTokenInput,
   RefreshSocialTokenOutput,
   DisconnectSocialInput,
+  OAuthErrorInput,
 } from '@/application/dto/social-account.dto';
 import { SupabaseClientFactory } from '@/infrastructure/database/supabase';
 import { TikTokApiClient } from '@/infrastructure/external-services/tiktok-api';
@@ -127,113 +128,137 @@ export class SupabaseSocialAccountRepository implements ISocialAccountRepository
     // Clean up used state
     await admin.from('social_oauth_states').delete().eq('state', input.state);
 
-    // Exchange code for tokens
-    const tokenData = await this.tiktokApi.exchangeCodeForToken(input.code);
+    try {
+      // Exchange code for tokens
+      const tokenData = await this.tiktokApi.exchangeCodeForToken(input.code);
 
-    // Fetch user info
-    const userInfo = await this.tiktokApi.getUserInfo(tokenData.access_token);
+      // Fetch user info
+      const userInfo = await this.tiktokApi.getUserInfo(tokenData.access_token);
 
-    // Encrypt tokens before storing
-    const encryptedAccessToken = encryptToken(tokenData.access_token);
-    const encryptedRefreshToken = encryptToken(tokenData.refresh_token);
+      // Encrypt tokens before storing
+      const encryptedAccessToken = encryptToken(tokenData.access_token);
+      const encryptedRefreshToken = encryptToken(tokenData.refresh_token);
 
-    const expiresAt = new Date(Date.now() + tokenData.refresh_expires_in * 1000).toISOString();
-    const accessTokenExpiresAt = new Date(Date.now() + tokenData.expires_in * 1000).toISOString();
-    const permissions = tokenData.scope ? tokenData.scope.split(',') : [];
+      const expiresAt = new Date(Date.now() + tokenData.refresh_expires_in * 1000).toISOString();
+      const accessTokenExpiresAt = new Date(Date.now() + tokenData.expires_in * 1000).toISOString();
+      const permissions = tokenData.scope ? tokenData.scope.split(',') : [];
 
-    // Upsert social account (update if same platform + account_id exists)
-    const { data: existing } = await admin
-      .from('social_accounts')
-      .select('id')
-      .eq('user_id', userId)
-      .eq('platform', input.platform)
-      .eq('account_id', userInfo.open_id)
-      .single();
-
-    let accountId: string;
-
-    if (existing) {
-      const { data: updated, error: updateError } = await admin
+      // Upsert social account (update if same platform + account_id exists)
+      const { data: existing } = await admin
         .from('social_accounts')
-        .update({
-          account_name: userInfo.display_name,
-          avatar_url: userInfo.avatar_url,
-          username: userInfo.username,
-          is_verified: userInfo.is_verified,
-          followers_count: userInfo.followers_count,
-          following_count: userInfo.following_count,
-          likes_count: userInfo.likes_count,
-          video_count: userInfo.video_count,
-          access_token: encryptedAccessToken,
-          refresh_token: encryptedRefreshToken,
-          token_expires_at: expiresAt,
-          access_token_expires_at: accessTokenExpiresAt,
-          permissions,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', existing.id)
         .select('id')
+        .eq('user_id', userId)
+        .eq('platform', input.platform)
+        .eq('account_id', userInfo.open_id)
         .single();
 
-      if (updateError || !updated) {
-        throw new AppError(EC.SOCIAL400003, 'Failed to update social account', 400);
+      let accountId: string;
+
+      if (existing) {
+        const { data: updated, error: updateError } = await admin
+          .from('social_accounts')
+          .update({
+            account_name: userInfo.display_name,
+            avatar_url: userInfo.avatar_url,
+            username: userInfo.username,
+            is_verified: userInfo.is_verified,
+            followers_count: userInfo.followers_count,
+            following_count: userInfo.following_count,
+            likes_count: userInfo.likes_count,
+            video_count: userInfo.video_count,
+            access_token: encryptedAccessToken,
+            refresh_token: encryptedRefreshToken,
+            token_expires_at: expiresAt,
+            access_token_expires_at: accessTokenExpiresAt,
+            permissions,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', existing.id)
+          .select('id')
+          .single();
+
+        if (updateError || !updated) {
+          throw new AppError(EC.SOCIAL400003, 'Failed to update social account', 400);
+        }
+        accountId = updated.id;
+      } else {
+        const { data: inserted, error: insertError } = await admin
+          .from('social_accounts')
+          .insert({
+            user_id: userId,
+            platform: input.platform,
+            account_id: userInfo.open_id,
+            account_name: userInfo.display_name,
+            avatar_url: userInfo.avatar_url,
+            username: userInfo.username,
+            is_verified: userInfo.is_verified,
+            followers_count: userInfo.followers_count,
+            following_count: userInfo.following_count,
+            likes_count: userInfo.likes_count,
+            video_count: userInfo.video_count,
+            access_token: encryptedAccessToken,
+            refresh_token: encryptedRefreshToken,
+            token_expires_at: expiresAt,
+            access_token_expires_at: accessTokenExpiresAt,
+            permissions,
+            connected_at: new Date().toISOString(),
+          })
+          .select('id')
+          .single();
+
+        if (insertError || !inserted) {
+          throw new AppError(EC.SOCIAL400003, 'Failed to save social account', 400);
+        }
+        accountId = inserted.id;
       }
-      accountId = updated.id;
-    } else {
-      const { data: inserted, error: insertError } = await admin
-        .from('social_accounts')
-        .insert({
-          user_id: userId,
+
+      const isReconnect = !!existing;
+
+      logger.info(`TikTok account ${isReconnect ? 'reconnected' : 'connected'}`, {
+        userId,
+        platform: input.platform,
+        accountId: userInfo.open_id,
+      });
+
+      await this.activityLog.create({
+        userId,
+        action: isReconnect ? 'social_account.reconnect' : 'social_account.connect',
+        resourceType: 'social_account',
+        resourceId: accountId,
+        details: {
           platform: input.platform,
-          account_id: userInfo.open_id,
-          account_name: userInfo.display_name,
-          avatar_url: userInfo.avatar_url,
-          username: userInfo.username,
-          is_verified: userInfo.is_verified,
-          followers_count: userInfo.followers_count,
-          following_count: userInfo.following_count,
-          likes_count: userInfo.likes_count,
-          video_count: userInfo.video_count,
-          access_token: encryptedAccessToken,
-          refresh_token: encryptedRefreshToken,
-          token_expires_at: expiresAt,
-          access_token_expires_at: accessTokenExpiresAt,
-          permissions,
-          connected_at: new Date().toISOString(),
-        })
-        .select('id')
-        .single();
+          accountName: userInfo.display_name,
+          accountId: userInfo.open_id,
+        },
+      });
 
-      if (insertError || !inserted) {
-        throw new AppError(EC.SOCIAL400003, 'Failed to save social account', 400);
-      }
-      accountId = inserted.id;
-    }
-
-    logger.info('TikTok account connected', {
-      userId,
-      platform: input.platform,
-      accountId: userInfo.open_id,
-    });
-
-    await this.activityLog.create({
-      userId,
-      action: 'social_account.connect',
-      resourceType: 'social_account',
-      resourceId: accountId,
-      details: {
+      return {
+        id: accountId,
         platform: input.platform,
         accountName: userInfo.display_name,
-        accountId: userInfo.open_id,
-      },
-    });
+        tokenStatus: 'active',
+      };
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Connection failed';
 
-    return {
-      id: accountId,
-      platform: input.platform,
-      accountName: userInfo.display_name,
-      tokenStatus: 'active',
-    };
+      logger.error('Social account connection failed', {
+        userId,
+        platform: input.platform,
+        error: errorMessage,
+      });
+
+      await this.activityLog.create({
+        userId,
+        action: 'social_account.connect_failed',
+        resourceType: 'social_account',
+        details: {
+          platform: input.platform,
+          error: errorMessage,
+        },
+      });
+
+      throw err;
+    }
   }
 
   async refreshToken(input: RefreshSocialTokenInput): Promise<RefreshSocialTokenOutput> {
@@ -299,7 +324,7 @@ export class SupabaseSocialAccountRepository implements ISocialAccountRepository
     const admin = this.supabase.getAdmin();
     const { data: row, error: findError } = await admin
       .from('social_accounts')
-      .select('id')
+      .select('id, platform')
       .eq('id', input.socialAccountId)
       .eq('user_id', input.userId)
       .single();
@@ -320,6 +345,7 @@ export class SupabaseSocialAccountRepository implements ISocialAccountRepository
     logger.info('Social account disconnected', {
       userId: input.userId,
       socialAccountId: input.socialAccountId,
+      platform: row.platform,
     });
 
     await this.activityLog.create({
@@ -327,7 +353,48 @@ export class SupabaseSocialAccountRepository implements ISocialAccountRepository
       action: 'social_account.disconnect',
       resourceType: 'social_account',
       resourceId: input.socialAccountId,
+      details: {
+        platform: row.platform,
+      },
     });
+  }
+
+  async handleOAuthError(input: OAuthErrorInput): Promise<void> {
+    const admin = this.supabase.getAdmin();
+
+    // Look up userId from state (may not exist if state is invalid/expired)
+    const { data: stateRow } = await admin
+      .from('social_oauth_states')
+      .select('user_id')
+      .eq('state', input.state)
+      .single();
+
+    // Clean up used state
+    if (stateRow) {
+      await admin.from('social_oauth_states').delete().eq('state', input.state);
+    }
+
+    const userId = stateRow?.user_id;
+
+    logger.info('OAuth authorization denied', {
+      userId,
+      platform: input.platform,
+      error: input.error,
+      errorDescription: input.errorDescription,
+    });
+
+    if (userId) {
+      await this.activityLog.create({
+        userId,
+        action: 'social_account.connect_failed',
+        resourceType: 'social_account',
+        details: {
+          platform: input.platform,
+          error: input.error,
+          errorDescription: input.errorDescription,
+        },
+      });
+    }
   }
 
   private computeTokenStatus(tokenExpiresAt: string | null): TokenStatus {

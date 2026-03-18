@@ -4,6 +4,7 @@ import { ListSocialAccountsUseCase } from '@/application/use-cases/social-accoun
 import { GetSocialAccountHealthUseCase } from '@/application/use-cases/social-accounts/get-social-account-health';
 import { ConnectSocialAccountUseCase } from '@/application/use-cases/social-accounts/connect-social-account';
 import { SocialCallbackUseCase } from '@/application/use-cases/social-accounts/social-callback';
+import { HandleOAuthErrorUseCase } from '@/application/use-cases/social-accounts/handle-oauth-error';
 import { RefreshSocialTokenUseCase } from '@/application/use-cases/social-accounts/refresh-social-token';
 import { DisconnectSocialAccountUseCase } from '@/application/use-cases/social-accounts/disconnect-social-account';
 import {
@@ -22,6 +23,7 @@ export class SocialAccountController {
     private readonly healthUseCase: GetSocialAccountHealthUseCase,
     private readonly connectUseCase: ConnectSocialAccountUseCase,
     private readonly callbackUseCase: SocialCallbackUseCase,
+    private readonly handleOAuthErrorUseCase: HandleOAuthErrorUseCase,
     private readonly refreshTokenUseCase: RefreshSocialTokenUseCase,
     private readonly disconnectUseCase: DisconnectSocialAccountUseCase,
   ) {}
@@ -81,12 +83,36 @@ export class SocialAccountController {
       throw new ValidationError(platformParsed.error.errors[0].message, EC.SOCIAL400001);
     }
 
+    const redirectBase = `${env.frontendUrl}/social-accounts/callback`;
+
+    // Handle OAuth provider error (e.g. user cancelled authorization)
+    const oauthError = ctx.query.error as string | undefined;
+    if (oauthError) {
+      const errorDescription = (ctx.query.error_description as string) || 'Authorization was denied';
+      const state = ctx.query.state as string | undefined;
+
+      if (state) {
+        await this.handleOAuthErrorUseCase.execute({
+          platform: platformParsed.data.platform as SocialPlatform,
+          state,
+          error: oauthError,
+          errorDescription,
+        });
+      }
+
+      const params = new URLSearchParams({
+        status: 'error',
+        platform: platformParsed.data.platform,
+        error: errorDescription,
+      });
+      ctx.redirect(`${redirectBase}?${params.toString()}`);
+      return;
+    }
+
     const parsed = socialCallbackSchema.safeParse(ctx.query);
     if (!parsed.success) {
       throw new ValidationError(parsed.error.errors[0].message, EC.SOCIAL400001);
     }
-
-    const redirectBase = `${env.frontendUrl}/social-accounts/callback`;
 
     try {
       const result = await this.callbackUseCase.execute({

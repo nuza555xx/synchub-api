@@ -26,6 +26,7 @@ import { ListSocialAccountsUseCase } from './application/use-cases/social-accoun
 import { GetSocialAccountHealthUseCase } from './application/use-cases/social-accounts/get-social-account-health';
 import { ConnectSocialAccountUseCase } from './application/use-cases/social-accounts/connect-social-account';
 import { SocialCallbackUseCase } from './application/use-cases/social-accounts/social-callback';
+import { HandleOAuthErrorUseCase } from './application/use-cases/social-accounts/handle-oauth-error';
 import { RefreshSocialTokenUseCase } from './application/use-cases/social-accounts/refresh-social-token';
 import { DisconnectSocialAccountUseCase } from './application/use-cases/social-accounts/disconnect-social-account';
 import { ListActivityLogsUseCase } from './application/use-cases/activity-logs/list-activity-logs';
@@ -60,6 +61,7 @@ const socialAccountController = new SocialAccountController(
   new GetSocialAccountHealthUseCase(socialAccountRepo),
   new ConnectSocialAccountUseCase(socialAccountRepo),
   new SocialCallbackUseCase(socialAccountRepo),
+  new HandleOAuthErrorUseCase(socialAccountRepo),
   new RefreshSocialTokenUseCase(socialAccountRepo),
   new DisconnectSocialAccountUseCase(socialAccountRepo),
 );

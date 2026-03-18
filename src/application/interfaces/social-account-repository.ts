@@ -8,6 +8,7 @@ import {
   RefreshSocialTokenInput,
   RefreshSocialTokenOutput,
   DisconnectSocialInput,
+  OAuthErrorInput,
 } from '@/application/dto/social-account.dto';
 
 export interface ISocialAccountRepository {
@@ -17,4 +18,5 @@ export interface ISocialAccountRepository {
   handleCallback(input: SocialCallbackInput): Promise<SocialCallbackOutput>;
   refreshToken(input: RefreshSocialTokenInput): Promise<RefreshSocialTokenOutput>;
   disconnect(input: DisconnectSocialInput): Promise<void>;
+  handleOAuthError(input: OAuthErrorInput): Promise<void>;
 }

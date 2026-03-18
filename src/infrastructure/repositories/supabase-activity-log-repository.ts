@@ -20,7 +20,7 @@ export class SupabaseActivityLogRepository implements IActivityLogRepository {
 
     let query = admin
       .from('activity_logs')
-      .select('*, user:auth.users!user_id(id, email, raw_user_meta_data)', { count: 'exact' })
+      .select('*', { count: 'exact' })
       .eq('user_id', input.userId)
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1);
