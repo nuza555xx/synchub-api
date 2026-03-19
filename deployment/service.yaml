@@ -53,12 +53,12 @@ spec:
             - name: TIKTOK_CLIENT_KEY
               valueFrom:
                 secretKeyRef:
-                  key: '1'
+                  key: '2'
                   name: synchub-api-tiktok-client-key
             - name: TIKTOK_CLIENT_SECRET
               valueFrom:
                 secretKeyRef:
-                  key: '1'
+                  key: '2'
                   name: synchub-api-tiktok-client-secret
           startupProbe:
             httpGet:
