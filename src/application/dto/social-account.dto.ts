@@ -32,10 +32,6 @@ export interface SocialAccountOutput {
   avatarUrl: string | null;
   username: string | null;
   isVerified: boolean;
-  followersCount: number;
-  followingCount: number;
-  likesCount: number;
-  videoCount: number;
   permissions: string[];
   tokenStatus: TokenStatus;
   tokenExpiresAt: string | null;

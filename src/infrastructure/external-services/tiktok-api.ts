@@ -38,10 +38,6 @@ export interface TikTokUserInfo {
   avatar_url_100: string;
   is_verified: boolean;
   username: string;
-  followers_count: number;
-  following_count: number;
-  likes_count: number;
-  video_count: number;
 }
 
 export interface TikTokUserInfoResponse {
@@ -161,7 +157,7 @@ export class TikTokApiClient {
   generateAuthUrl(state: string, scopes?: string[]): string {
     const scope = scopes?.length
       ? scopes.join(",")
-      : "user.info.basic,user.info.profile,user.info.stats";
+      : "user.info.basic,user.info.profile";
     const params = new URLSearchParams({
       client_key: this.clientKey,
       response_type: "code",
@@ -258,7 +254,7 @@ export class TikTokApiClient {
         {
           params: {
             fields:
-              "open_id,display_name,avatar_url,avatar_url_100,is_verified,username,followers_count,following_count,likes_count,video_count",
+              "open_id,display_name,avatar_url,avatar_url_100,is_verified,username",
           },
           headers: { Authorization: `Bearer ${accessToken}` },
         },
@@ -280,10 +276,6 @@ export class TikTokApiClient {
         avatar_url_100: user.avatar_url_100,
         is_verified: user.is_verified,
         username: user.username,
-        followers_count: user.followers_count,
-        following_count: user.following_count,
-        likes_count: user.likes_count,
-        video_count: user.video_count,
       };
     } catch (error) {
       if (error instanceof AppError) throw error;
