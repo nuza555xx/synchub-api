@@ -44,7 +44,9 @@ export class SupabaseDraftPostRepository implements IDraftPostRepository {
       throw new AppError(EC.SYS500001, error?.message || 'Failed to create draft', 500);
     }
 
-    return this.toOutput(data);
+    const output = this.toOutput(data);
+    output.mediaUrls = await this.createSignedUrls(output.mediaPaths);
+    return output;
   }
 
   async update(input: UpdateDraftInput): Promise<DraftPostOutput> {
@@ -55,7 +57,7 @@ export class SupabaseDraftPostRepository implements IDraftPostRepository {
     if (input.description !== undefined) updates.description = input.description;
     if (input.content !== undefined) updates.content = input.content;
     if (input.socialAccountIds !== undefined) updates.social_account_ids = input.socialAccountIds;
-    if (input.mediaUrls !== undefined) updates.media_urls = input.mediaUrls;
+    if (input.mediaPaths !== undefined) updates.media_urls = input.mediaPaths;
 
     const { data, error } = await admin
       .from('posts')
@@ -69,7 +71,9 @@ export class SupabaseDraftPostRepository implements IDraftPostRepository {
       throw new NotFoundError('Draft not found');
     }
 
-    return this.toOutput(data);
+    const output = this.toOutput(data);
+    output.mediaUrls = await this.createSignedUrls(output.mediaPaths);
+    return output;
   }
 
   async findById(id: string, userId: string): Promise<DraftPostOutput> {
@@ -85,7 +89,9 @@ export class SupabaseDraftPostRepository implements IDraftPostRepository {
       throw new NotFoundError('Draft not found');
     }
 
-    return this.toOutput(data);
+    const output = this.toOutput(data);
+    output.mediaUrls = await this.createSignedUrls(output.mediaPaths);
+    return output;
   }
 
   async listByUser(userId: string): Promise<DraftPostOutput[]> {
@@ -100,7 +106,11 @@ export class SupabaseDraftPostRepository implements IDraftPostRepository {
       throw new AppError(EC.SYS500001, error.message, 500);
     }
 
-    return (data || []).map((row) => this.toOutput(row));
+    return Promise.all((data || []).map(async (row) => {
+      const output = this.toOutput(row);
+      output.mediaUrls = await this.createSignedUrls(output.mediaPaths);
+      return output;
+    }));
   }
 
   async delete(id: string, userId: string): Promise<void> {
@@ -115,8 +125,7 @@ export class SupabaseDraftPostRepository implements IDraftPostRepository {
       .single();
 
     if (draft && draft.media_urls && draft.media_urls.length > 0) {
-      const filePaths = draft.media_urls.map((url: string) => this.extractStoragePath(url));
-      await admin.storage.from('media').remove(filePaths);
+      await admin.storage.from('media').remove(draft.media_urls);
     }
 
     const { error } = await admin
@@ -159,16 +168,14 @@ export class SupabaseDraftPostRepository implements IDraftPostRepository {
       throw new AppError(EC.SYS500001, uploadError.message, 500);
     }
 
-    const { data: publicUrl } = admin.storage.from('media').getPublicUrl(storagePath);
-
-    // Append URL to draft's media_urls
-    const updatedUrls = [...(draft.media_urls || []), publicUrl.publicUrl];
+    // Append path to draft's media_urls
+    const updatedPaths = [...(draft.media_urls || []), storagePath];
     await admin
       .from('posts')
-      .update({ media_urls: updatedUrls, updated_at: new Date().toISOString() })
+      .update({ media_urls: updatedPaths, updated_at: new Date().toISOString() })
       .eq('id', input.draftId);
 
-    return { url: publicUrl.publicUrl };
+    return { path: storagePath };
   }
 
   async deleteMedia(input: DeleteMediaInput): Promise<void> {
@@ -186,23 +193,25 @@ export class SupabaseDraftPostRepository implements IDraftPostRepository {
       throw new NotFoundError('Draft not found');
     }
 
-    const storagePath = this.extractStoragePath(input.mediaUrl);
-    await admin.storage.from('media').remove([storagePath]);
+    await admin.storage.from('media').remove([input.mediaPath]);
 
-    // Remove URL from draft's media_urls
-    const updatedUrls = (draft.media_urls || []).filter((url: string) => url !== input.mediaUrl);
+    // Remove path from draft's media_urls
+    const updatedPaths = (draft.media_urls || []).filter((p: string) => p !== input.mediaPath);
     await admin
       .from('posts')
-      .update({ media_urls: updatedUrls, updated_at: new Date().toISOString() })
+      .update({ media_urls: updatedPaths, updated_at: new Date().toISOString() })
       .eq('id', input.draftId);
   }
 
-  private extractStoragePath(publicUrl: string): string {
-    // Public URL format: {supabaseUrl}/storage/v1/object/public/media/{path}
-    const marker = '/storage/v1/object/public/media/';
-    const idx = publicUrl.indexOf(marker);
-    if (idx === -1) return publicUrl;
-    return publicUrl.slice(idx + marker.length);
+  private async createSignedUrls(paths: string[]): Promise<string[]> {
+    if (paths.length === 0) return [];
+    const admin = this.supabase.getAdmin();
+    const { data, error } = await admin.storage.from('media').createSignedUrls(paths, 3600);
+    if (error || !data) return [];
+    return paths.map((p) => {
+      const found = data.find((d) => d.path === p);
+      return found?.signedUrl ?? '';
+    }).filter(Boolean);
   }
 
   private toOutput(row: Record<string, unknown>): DraftPostOutput {
@@ -213,7 +222,8 @@ export class SupabaseDraftPostRepository implements IDraftPostRepository {
       description: (row.description as string) || '',
       content: row.content as string,
       mediaType: row.media_type as DraftPostOutput['mediaType'],
-      mediaUrls: (row.media_urls as string[]) || [],
+      mediaPaths: (row.media_urls as string[]) || [],
+      mediaUrls: [], // signed URLs populated by caller via resolveMediaUrls
       status: row.status as DraftPostOutput['status'],
       scheduledAt: (row.scheduled_at as string) || null,
       publishedAt: (row.published_at as string) || null,
@@ -238,9 +248,15 @@ export class SupabaseDraftPostRepository implements IDraftPostRepository {
       throw new NotFoundError('Post not found');
     }
 
-    const mediaUrls = (post.media_urls as string[]) || [];
-    if (mediaUrls.length === 0) {
+    const mediaPaths = (post.media_urls as string[]) || [];
+    if (mediaPaths.length === 0) {
       throw new AppError(EC.POST400003, 'Post has no media to publish', 400);
+    }
+
+    // Generate signed URLs for publishing to external platforms
+    const mediaUrls = await this.createSignedUrls(mediaPaths);
+    if (mediaUrls.length === 0) {
+      throw new AppError(EC.POST400003, 'Failed to generate media URLs', 400);
     }
 
     const socialAccountIds = (post.social_account_ids as string[]) || [];

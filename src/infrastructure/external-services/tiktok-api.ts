@@ -8,9 +8,12 @@ import { logger } from "@/infrastructure/logger";
 const TIKTOK_AUTH_URL = "https://www.tiktok.com/v2/auth/authorize/";
 const TIKTOK_TOKEN_URL = "https://open.tiktokapis.com/v2/oauth/token/";
 const TIKTOK_USER_INFO_URL = "https://open.tiktokapis.com/v2/user/info/";
-const TIKTOK_PUBLISH_VIDEO_URL = "https://open.tiktokapis.com/v2/post/publish/video/init/";
-const TIKTOK_PUBLISH_STATUS_URL = "https://open.tiktokapis.com/v2/post/publish/status/fetch/";
-const TIKTOK_PUBLISH_PHOTO_URL = "https://open.tiktokapis.com/v2/post/publish/content/init/";
+const TIKTOK_PUBLISH_VIDEO_URL =
+  "https://open.tiktokapis.com/v2/post/publish/video/init/";
+const TIKTOK_PUBLISH_STATUS_URL =
+  "https://open.tiktokapis.com/v2/post/publish/status/fetch/";
+const TIKTOK_PUBLISH_PHOTO_URL =
+  "https://open.tiktokapis.com/v2/post/publish/content/init/";
 
 export interface TikTokTokenResponse {
   access_token: string;
@@ -61,7 +64,12 @@ export interface TikTokPostResponse {
 
 export interface TikTokPublishStatusResponse {
   data: {
-    status: 'PROCESSING_UPLOAD' | 'PROCESSING_DOWNLOAD' | 'SEND_TO_USER_INBOX' | 'PUBLISH_COMPLETE' | 'FAILED';
+    status:
+      | "PROCESSING_UPLOAD"
+      | "PROCESSING_DOWNLOAD"
+      | "SEND_TO_USER_INBOX"
+      | "PUBLISH_COMPLETE"
+      | "FAILED";
     fail_reason?: string;
     publicaly_available_post_id?: string[];
     uploaded_bytes?: number;
@@ -73,8 +81,12 @@ export interface TikTokPublishStatusResponse {
   };
 }
 
-export type TikTokPrivacyLevel = 'PUBLIC_TO_EVERYONE' | 'MUTUAL_FOLLOW_FRIENDS' | 'FOLLOWER_OF_CREATOR' | 'SELF_ONLY';
-export type TikTokMediaType = 'VIDEO' | 'PHOTO';
+export type TikTokPrivacyLevel =
+  | "PUBLIC_TO_EVERYONE"
+  | "MUTUAL_FOLLOW_FRIENDS"
+  | "FOLLOWER_OF_CREATOR"
+  | "SELF_ONLY";
+export type TikTokMediaType = "VIDEO" | "PHOTO";
 
 export interface TikTokDirectPostOptions {
   mediaType: TikTokMediaType;
@@ -88,7 +100,51 @@ export interface TikTokDirectPostOptions {
   disableComment?: boolean;
   disableDuet?: boolean;
   disableStitch?: boolean;
+  autoAddMusic?: boolean;
   photoCoverIndex?: number;
+}
+
+// --- TikTok API Request Body Interfaces ---
+
+interface TikTokPostInfoBase {
+  privacy_level: TikTokPrivacyLevel | string;
+  disable_comment: boolean;
+  brand_content_toggle: boolean;
+  brand_organic_toggle: boolean;
+}
+
+interface TikTokVideoPostInfo extends TikTokPostInfoBase {
+  title: string;
+  disable_duet: boolean;
+  disable_stitch: boolean;
+}
+
+interface TikTokPhotoPostInfo extends TikTokPostInfoBase {
+  description: string;
+}
+
+interface TikTokVideoSourceInfo {
+  source: "PULL_FROM_URL";
+  video_url: string;
+}
+
+interface TikTokPhotoSourceInfo {
+  source: "PULL_FROM_URL";
+  photo_cover_index: number;
+  photo_images: string[];
+}
+
+interface TikTokVideoRequestBody {
+  post_info: TikTokVideoPostInfo;
+  source_info: TikTokVideoSourceInfo;
+}
+
+interface TikTokPhotoRequestBody {
+  post_info: TikTokPhotoPostInfo;
+  source_info: TikTokPhotoSourceInfo;
+  media_type: "PHOTO";
+  post_mode: "DIRECT_POST";
+  auto_add_music: boolean;
 }
 
 export class TikTokApiClient {
@@ -103,7 +159,9 @@ export class TikTokApiClient {
   }
 
   generateAuthUrl(state: string, scopes?: string[]): string {
-    const scope = scopes?.length ? scopes.join(',') : 'user.info.basic,user.info.profile,user.info.stats';
+    const scope = scopes?.length
+      ? scopes.join(",")
+      : "user.info.basic,user.info.profile,user.info.stats";
     const params = new URLSearchParams({
       client_key: this.clientKey,
       response_type: "code",
@@ -240,18 +298,25 @@ export class TikTokApiClient {
 
   async publishVideo(
     accessToken: string,
-    options: { title: string; videoUrl: string; privacyLevel?: string; disableComment?: boolean; disableDuet?: boolean; disableStitch?: boolean },
+    options: {
+      title: string;
+      videoUrl: string;
+      privacyLevel?: string;
+      disableComment?: boolean;
+      disableDuet?: boolean;
+      disableStitch?: boolean;
+    },
   ): Promise<{ publishId: string }> {
-    logger.info('TikTok publishVideo called', {
+    logger.info("TikTok publishVideo called", {
       videoUrl: options.videoUrl,
-      privacyLevel: options.privacyLevel || 'SELF_ONLY',
+      privacyLevel: options.privacyLevel || "SELF_ONLY",
       titleLength: options.title.length,
     });
     return this.directPost(accessToken, {
-      mediaType: 'VIDEO',
+      mediaType: "VIDEO",
       title: options.title,
       videoUrl: options.videoUrl,
-      privacyLevel: (options.privacyLevel as TikTokPrivacyLevel) || 'SELF_ONLY',
+      privacyLevel: (options.privacyLevel as TikTokPrivacyLevel) || "SELF_ONLY",
       disableComment: options.disableComment,
       disableDuet: options.disableDuet,
       disableStitch: options.disableStitch,
@@ -260,18 +325,23 @@ export class TikTokApiClient {
 
   async publishPhoto(
     accessToken: string,
-    options: { title: string; photoUrls: string[]; privacyLevel?: string; disableComment?: boolean },
+    options: {
+      title: string;
+      photoUrls: string[];
+      privacyLevel?: string;
+      disableComment?: boolean;
+    },
   ): Promise<{ publishId: string }> {
-    logger.info('TikTok publishPhoto called', {
+    logger.info("TikTok publishPhoto called", {
       photoCount: options.photoUrls.length,
-      privacyLevel: options.privacyLevel || 'SELF_ONLY',
+      privacyLevel: options.privacyLevel || "SELF_ONLY",
       titleLength: options.title.length,
     });
     return this.directPost(accessToken, {
-      mediaType: 'PHOTO',
+      mediaType: "PHOTO",
       title: options.title,
       photoUrls: options.photoUrls,
-      privacyLevel: (options.privacyLevel as TikTokPrivacyLevel) || 'SELF_ONLY',
+      privacyLevel: (options.privacyLevel as TikTokPrivacyLevel) || "SELF_ONLY",
       disableComment: options.disableComment,
     });
   }
@@ -284,53 +354,62 @@ export class TikTokApiClient {
     accessToken: string,
     options: TikTokDirectPostOptions,
   ): Promise<{ publishId: string }> {
-    const isVideo = options.mediaType === 'VIDEO';
+    const isVideo = options.mediaType === "VIDEO";
     const url = isVideo ? TIKTOK_PUBLISH_VIDEO_URL : TIKTOK_PUBLISH_PHOTO_URL;
 
-    const postInfo: Record<string, unknown> = {
-      privacy_level: options.privacyLevel || 'SELF_ONLY',
-      disable_comment: options.disableComment ?? false,
-    };
-
-    if (isVideo) {
-      postInfo.title = options.title.slice(0, 2200);
-      postInfo.disable_duet = options.disableDuet ?? false;
-      postInfo.disable_stitch = options.disableStitch ?? false;
-      postInfo.brand_content_toggle = false;
-      postInfo.brand_organic_toggle = false;
-    } else {
-      postInfo.description = options.title.slice(0, 2200);
-      postInfo.brand_content_toggle = false;
-      postInfo.brand_organic_toggle = false;
-    }
-
-    const sourceInfo: Record<string, unknown> = {
-      source: 'PULL_FROM_URL',
-    };
+    let body: TikTokVideoRequestBody | TikTokPhotoRequestBody;
 
     if (isVideo) {
       if (!options.videoUrl) {
-        throw new AppError(EC.POST400003, 'videoUrl is required for VIDEO media type', 400);
+        throw new AppError(
+          EC.POST400003,
+          "videoUrl is required for VIDEO media type",
+          400,
+        );
       }
-      sourceInfo.video_url = options.videoUrl;
+      body = {
+        post_info: {
+          title: options.title.slice(0, 2200),
+          privacy_level: options.privacyLevel || "SELF_ONLY",
+          disable_comment: options.disableComment ?? false,
+          disable_duet: options.disableDuet ?? false,
+          disable_stitch: options.disableStitch ?? false,
+          brand_content_toggle: false,
+          brand_organic_toggle: false,
+        },
+        source_info: {
+          source: "PULL_FROM_URL",
+          video_url: options.videoUrl,
+        },
+      };
     } else {
       if (!options.photoUrls || options.photoUrls.length === 0) {
-        throw new AppError(EC.POST400003, 'photoUrls is required for PHOTO media type', 400);
+        throw new AppError(
+          EC.POST400003,
+          "photoUrls is required for PHOTO media type",
+          400,
+        );
       }
-      sourceInfo.photo_cover_index = options.photoCoverIndex ?? 0;
-      sourceInfo.photo_images = options.photoUrls;
+      body = {
+        post_info: {
+          description: options.title.slice(0, 2200),
+          privacy_level: options.privacyLevel || "SELF_ONLY",
+          disable_comment: options.disableComment ?? false,
+          brand_content_toggle: false,
+          brand_organic_toggle: false,
+        },
+        source_info: {
+          source: "PULL_FROM_URL",
+          photo_cover_index: options.photoCoverIndex ?? 0,
+          photo_images: options.photoUrls,
+        },
+        media_type: "PHOTO",
+        post_mode: "DIRECT_POST",
+        auto_add_music: options.autoAddMusic ?? true,
+      };
     }
 
-    const body: Record<string, unknown> = {
-      post_info: postInfo,
-      source_info: sourceInfo,
-    };
-    if (!isVideo) {
-      body.media_type = 'PHOTO';
-      body.post_mode = 'DIRECT_POST';
-    }
-
-    logger.info('TikTok directPost request', {
+    logger.info("TikTok directPost request", {
       url,
       mediaType: options.mediaType,
       body,
@@ -340,37 +419,44 @@ export class TikTokApiClient {
       const { data } = await axios.post<TikTokPostResponse>(url, body, {
         headers: {
           Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json; charset=UTF-8',
+          "Content-Type": "application/json; charset=UTF-8",
         },
       });
 
-      logger.info('TikTok directPost response', {
+      logger.info("TikTok directPost response", {
         fullResponse: data,
       });
 
-      if (data.error.code !== 'ok') {
-        logger.error('TikTok direct post failed', {
+      if (data.error.code !== "ok") {
+        logger.error("TikTok direct post failed", {
           code: data.error.code,
           message: data.error.message,
           logId: data.error.log_id,
         });
-        throw new AppError(EC.POST400002, data.error.message || 'TikTok publish failed', 400);
+        throw new AppError(
+          EC.POST400002,
+          data.error.message || "TikTok publish failed",
+          400,
+        );
       }
 
-      logger.info('TikTok directPost success', { publishId: data.data.publish_id });
+      logger.info("TikTok directPost success", {
+        publishId: data.data.publish_id,
+      });
       return { publishId: data.data.publish_id };
     } catch (error) {
       if (error instanceof AppError) throw error;
       const errData = axios.isAxiosError(error)
         ? (error.response?.data as TikTokPostResponse)
         : undefined;
-      logger.error('TikTok direct post failed', {
+      logger.error("TikTok direct post failed", {
         error: errData ?? error,
         logId: errData?.error?.log_id,
       });
       throw new AppError(
         EC.POST400002,
-        errData?.error?.message || `Failed to publish ${options.mediaType.toLowerCase()} to TikTok`,
+        errData?.error?.message ||
+          `Failed to publish ${options.mediaType.toLowerCase()} to TikTok`,
         400,
       );
     }
@@ -379,27 +465,36 @@ export class TikTokApiClient {
   async getPublishStatus(
     accessToken: string,
     publishId: string,
-  ): Promise<TikTokPublishStatusResponse['data']> {
-    logger.info('TikTok getPublishStatus called', { publishId });
+  ): Promise<TikTokPublishStatusResponse["data"]> {
+    logger.info("TikTok getPublishStatus called", { publishId });
     try {
       const { data } = await axios.post<TikTokPublishStatusResponse>(
         TIKTOK_PUBLISH_STATUS_URL,
         { publish_id: publishId },
-        { headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json; charset=UTF-8' } },
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json; charset=UTF-8",
+          },
+        },
       );
 
-      logger.info('TikTok getPublishStatus response', { fullResponse: data });
+      logger.info("TikTok getPublishStatus response", { fullResponse: data });
 
-      if (data.error.code !== 'ok') {
-        logger.error('TikTok publish status check failed', {
+      if (data.error.code !== "ok") {
+        logger.error("TikTok publish status check failed", {
           code: data.error.code,
           message: data.error.message,
           logId: data.error.log_id,
         });
-        throw new AppError(EC.POST400002, data.error.message || 'Failed to get publish status', 400);
+        throw new AppError(
+          EC.POST400002,
+          data.error.message || "Failed to get publish status",
+          400,
+        );
       }
 
-      logger.info('TikTok publish status result', {
+      logger.info("TikTok publish status result", {
         publishId,
         status: data.data.status,
         failReason: data.data.fail_reason,
@@ -409,9 +504,17 @@ export class TikTokApiClient {
       return data.data;
     } catch (error) {
       if (error instanceof AppError) throw error;
-      const errData = axios.isAxiosError(error) ? error.response?.data : undefined;
-      logger.error('TikTok publish status check failed', { error: errData ?? error });
-      throw new AppError(EC.POST400002, 'Failed to check TikTok publish status', 400);
+      const errData = axios.isAxiosError(error)
+        ? error.response?.data
+        : undefined;
+      logger.error("TikTok publish status check failed", {
+        error: errData ?? error,
+      });
+      throw new AppError(
+        EC.POST400002,
+        "Failed to check TikTok publish status",
+        400,
+      );
     }
   }
 

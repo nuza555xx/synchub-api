@@ -15,7 +15,7 @@ export const updateDraftSchema = z.object({
   description: z.string().max(2000).optional(),
   content: z.string().optional(),
   socialAccountIds: z.array(z.string().uuid('Invalid social account ID')).optional(),
-  mediaUrls: z.array(z.string().url('Invalid media URL')).optional(),
+  mediaPaths: z.array(z.string()).optional(),
 });
 
 export const draftIdSchema = z.object({
@@ -23,7 +23,7 @@ export const draftIdSchema = z.object({
 });
 
 export const deleteMediaSchema = z.object({
-  mediaUrl: z.string().url('Invalid media URL'),
+  mediaPath: z.string().min(1, 'Media path is required'),
 });
 
 export const publishPostSchema = z.object({

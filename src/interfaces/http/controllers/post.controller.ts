@@ -82,7 +82,7 @@ export class DraftPostController {
       description: bodyParsed.data.description,
       content: bodyParsed.data.content,
       socialAccountIds: bodyParsed.data.socialAccountIds,
-      mediaUrls: bodyParsed.data.mediaUrls,
+      mediaPaths: bodyParsed.data.mediaPaths,
     });
 
     ctx.status = 200;
@@ -183,7 +183,7 @@ export class DraftPostController {
     await this.deleteMediaUseCase.execute({
       draftId: idParsed.data.id,
       userId,
-      mediaUrl: bodyParsed.data.mediaUrl,
+      mediaPath: bodyParsed.data.mediaPath,
     });
 
     ctx.status = 200;

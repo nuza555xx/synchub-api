@@ -16,7 +16,7 @@ export interface UpdateDraftInput {
   name?: string;
   description?: string;
   content?: string;
-  mediaUrls?: string[];
+  mediaPaths?: string[];
 }
 
 export interface UploadMediaInput {
@@ -36,6 +36,7 @@ export interface DraftPostOutput {
   description: string;
   content: string;
   mediaType: MediaType;
+  mediaPaths: string[];
   mediaUrls: string[];
   status: DraftStatus;
   scheduledAt: string | null;
@@ -45,13 +46,13 @@ export interface DraftPostOutput {
 }
 
 export interface UploadMediaOutput {
-  url: string;
+  path: string;
 }
 
 export interface DeleteMediaInput {
   draftId: string;
   userId: string;
-  mediaUrl: string;
+  mediaPath: string;
 }
 
 export interface PublishPostInput {

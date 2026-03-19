@@ -9,7 +9,7 @@ export interface DraftPost {
   description: string;
   content: string;
   mediaType: MediaType;
-  mediaUrls: string[];
+  mediaPaths: string[];
   status: DraftStatus;
   scheduledAt: string | null;
   publishedAt: string | null;
