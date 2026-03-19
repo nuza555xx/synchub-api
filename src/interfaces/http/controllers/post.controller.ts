@@ -208,7 +208,11 @@ export class DraftPostController {
     const result = await this.publishUseCase.execute({
       postId: idParsed.data.id,
       userId,
-      privacyLevel: "SELF_ONLY", // Default to self only if not specified
+      privacyLevel: bodyParsed.data.privacyLevel ?? "SELF_ONLY",
+      disableComment: bodyParsed.data.disableComment,
+      autoAddMusic: bodyParsed.data.autoAddMusic,
+      brandContentToggle: bodyParsed.data.brandContentToggle,
+      brandOrganicToggle: bodyParsed.data.brandOrganicToggle,
     });
 
     ctx.status = 200;

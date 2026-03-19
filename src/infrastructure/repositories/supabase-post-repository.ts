@@ -313,12 +313,21 @@ export class SupabaseDraftPostRepository implements IDraftPostRepository {
               title,
               videoUrl: mediaUrls[0],
               privacyLevel: input.privacyLevel,
+              disableComment: input.disableComment,
+              disableDuet: false,
+              disableStitch: false,
+              brandContentToggle: input.brandContentToggle,
+              brandOrganicToggle: input.brandOrganicToggle,
             });
           } else {
             publishResult = await this.tiktokApi.publishPhoto(accessToken, {
               title,
               photoUrls: mediaUrls,
               privacyLevel: input.privacyLevel,
+              disableComment: input.disableComment,
+              autoAddMusic: input.autoAddMusic,
+              brandContentToggle: input.brandContentToggle,
+              brandOrganicToggle: input.brandOrganicToggle,
             });
           }
 

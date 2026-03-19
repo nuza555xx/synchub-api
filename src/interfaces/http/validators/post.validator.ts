@@ -28,4 +28,8 @@ export const deleteMediaSchema = z.object({
 
 export const publishPostSchema = z.object({
   privacyLevel: z.enum(['PUBLIC_TO_EVERYONE', 'MUTUAL_FOLLOW_FRIENDS', 'FOLLOWER_OF_CREATOR', 'SELF_ONLY']).optional(),
+  disableComment: z.boolean().optional(),
+  autoAddMusic: z.boolean().optional(),
+  brandContentToggle: z.boolean().optional(),
+  brandOrganicToggle: z.boolean().optional(),
 });

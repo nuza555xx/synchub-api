@@ -97,6 +97,8 @@ export interface TikTokDirectPostOptions {
   disableDuet?: boolean;
   disableStitch?: boolean;
   autoAddMusic?: boolean;
+  brandContentToggle?: boolean;
+  brandOrganicToggle?: boolean;
   photoCoverIndex?: number;
 }
 
@@ -297,6 +299,8 @@ export class TikTokApiClient {
       disableComment?: boolean;
       disableDuet?: boolean;
       disableStitch?: boolean;
+      brandContentToggle?: boolean;
+      brandOrganicToggle?: boolean;
     },
   ): Promise<{ publishId: string }> {
     logger.info("TikTok publishVideo called", {
@@ -312,6 +316,8 @@ export class TikTokApiClient {
       disableComment: options.disableComment,
       disableDuet: options.disableDuet,
       disableStitch: options.disableStitch,
+      brandContentToggle: options.brandContentToggle,
+      brandOrganicToggle: options.brandOrganicToggle,
     });
   }
 
@@ -322,6 +328,9 @@ export class TikTokApiClient {
       photoUrls: string[];
       privacyLevel?: string;
       disableComment?: boolean;
+      autoAddMusic?: boolean;
+      brandContentToggle?: boolean;
+      brandOrganicToggle?: boolean;
     },
   ): Promise<{ publishId: string }> {
     logger.info("TikTok publishPhoto called", {
@@ -335,6 +344,9 @@ export class TikTokApiClient {
       photoUrls: options.photoUrls,
       privacyLevel: (options.privacyLevel as TikTokPrivacyLevel) || "SELF_ONLY",
       disableComment: options.disableComment,
+      autoAddMusic: options.autoAddMusic,
+      brandContentToggle: options.brandContentToggle,
+      brandOrganicToggle: options.brandOrganicToggle,
     });
   }
 
@@ -366,8 +378,8 @@ export class TikTokApiClient {
           disable_comment: options.disableComment ?? false,
           disable_duet: options.disableDuet ?? false,
           disable_stitch: options.disableStitch ?? false,
-          brand_content_toggle: false,
-          brand_organic_toggle: false,
+          brand_content_toggle: options.brandContentToggle ?? false,
+          brand_organic_toggle: options.brandOrganicToggle ?? false,
         },
         source_info: {
           source: "PULL_FROM_URL",
@@ -384,11 +396,12 @@ export class TikTokApiClient {
       }
       body = {
         post_info: {
+          title: options.title.slice(0, 90),
           description: options.title.slice(0, 2200),
           privacy_level: options.privacyLevel || "SELF_ONLY",
           disable_comment: options.disableComment ?? false,
-          brand_content_toggle: false,
-          brand_organic_toggle: false,
+          brand_content_toggle: options.brandContentToggle ?? false,
+          brand_organic_toggle: options.brandOrganicToggle ?? false,
         },
         source_info: {
           source: "PULL_FROM_URL",

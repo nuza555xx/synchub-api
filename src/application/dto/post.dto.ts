@@ -59,6 +59,10 @@ export interface PublishPostInput {
   postId: string;
   userId: string;
   privacyLevel?: string;
+  disableComment?: boolean;
+  autoAddMusic?: boolean;
+  brandContentToggle?: boolean;
+  brandOrganicToggle?: boolean;
 }
 
 export interface PublishPostOutput {
