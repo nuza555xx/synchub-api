@@ -22,6 +22,7 @@ import { LogoutUseCase } from './application/use-cases/auth/logout';
 import { RefreshUseCase } from './application/use-cases/auth/refresh';
 import { GetMeUseCase } from './application/use-cases/auth/get-me';
 import { GoogleOAuthUseCase } from './application/use-cases/auth/google-oauth';
+import { FacebookOAuthUseCase } from './application/use-cases/auth/facebook-oauth';
 import { OAuthCallbackUseCase } from './application/use-cases/auth/oauth-callback';
 import { UpdateProfileUseCase } from './application/use-cases/auth/update-profile';
 import { ListSocialAccountsUseCase } from './application/use-cases/social-accounts/list-social-accounts';
@@ -43,6 +44,7 @@ import { SupabaseSocialAccountRepository } from './infrastructure/repositories/s
 import { SupabaseActivityLogRepository } from './infrastructure/repositories/supabase-activity-log-repository';
 import { SupabaseDraftPostRepository } from './infrastructure/repositories/supabase-post-repository';
 import { TikTokApiClient } from './infrastructure/external-services/tiktok-api';
+import { FacebookApiClient } from './infrastructure/external-services/facebook-api';
 import { logger } from './infrastructure/logger';
 import { PublishPostUseCase } from './application/use-cases/posts/publish-post';
 
@@ -60,13 +62,15 @@ const authController = new AuthController(
   new RefreshUseCase(authRepo),
   new GetMeUseCase(authRepo),
   new GoogleOAuthUseCase(authRepo),
+  new FacebookOAuthUseCase(authRepo),
   new OAuthCallbackUseCase(authRepo),
   new UpdateProfileUseCase(authRepo),
 );
 
 const tiktokApi = new TikTokApiClient();
+const facebookApi = new FacebookApiClient();
 const activityLogRepo = new SupabaseActivityLogRepository(supabaseFactory);
-const socialAccountRepo = new SupabaseSocialAccountRepository(supabaseFactory, tiktokApi, activityLogRepo);
+const socialAccountRepo = new SupabaseSocialAccountRepository(supabaseFactory, tiktokApi, facebookApi, activityLogRepo);
 const socialAccountController = new SocialAccountController(
   new ListSocialAccountsUseCase(socialAccountRepo),
   new GetSocialAccountHealthUseCase(socialAccountRepo),

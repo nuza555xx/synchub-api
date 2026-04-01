@@ -16,4 +16,9 @@ export const env = {
     clientSecret: process.env.TIKTOK_CLIENT_SECRET || '',
     redirectUri: process.env.TIKTOK_REDIRECT_URI || '',
   },
+  facebook: {
+    appId: process.env.FB_APP_ID || '',
+    appSecret: process.env.FB_APP_SECRET || '',
+    redirectUri: process.env.FB_REDIRECT_URI || '',
+  },
 };

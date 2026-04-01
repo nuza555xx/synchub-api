@@ -13,6 +13,7 @@ import {
 } from '@/application/dto/social-account.dto';
 import { SupabaseClientFactory } from '@/infrastructure/database/supabase';
 import { TikTokApiClient } from '@/infrastructure/external-services/tiktok-api';
+import { FacebookApiClient } from '@/infrastructure/external-services/facebook-api';
 import { encryptToken, decryptToken } from '@/infrastructure/encryption/aes';
 import { AppError, NotFoundError } from '@/domain/errors/app-error';
 import * as EC from '@/domain/enums/error-codes';
@@ -24,6 +25,7 @@ export class SupabaseSocialAccountRepository implements ISocialAccountRepository
   constructor(
     private readonly supabase: SupabaseClientFactory,
     private readonly tiktokApi: TikTokApiClient,
+    private readonly facebookApi: FacebookApiClient,
     private readonly activityLog: IActivityLogRepository,
   ) {}
 
@@ -82,11 +84,13 @@ export class SupabaseSocialAccountRepository implements ISocialAccountRepository
   }
 
   async connect(input: ConnectSocialInput): Promise<ConnectSocialOutput> {
-    if (input.platform !== 'tiktok') {
+    if (input.platform !== 'tiktok' && input.platform !== 'facebook') {
       throw new AppError(EC.SOCIAL400005, `Platform "${input.platform}" is not yet supported`, 400);
     }
 
-    const state = this.tiktokApi.generateState();
+    const state = input.platform === 'tiktok' 
+      ? this.tiktokApi.generateState() 
+      : this.facebookApi.generateState();
 
     // Store state in DB for CSRF verification
     const admin = this.supabase.getAdmin();
@@ -97,12 +101,14 @@ export class SupabaseSocialAccountRepository implements ISocialAccountRepository
       created_at: new Date().toISOString(),
     });
 
-    const authUrl = this.tiktokApi.generateAuthUrl(state, input.scopes);
+    const authUrl = input.platform === 'tiktok'
+      ? this.tiktokApi.generateAuthUrl(state, input.scopes)
+      : this.facebookApi.generateAuthUrl(state, input.scopes);
     return { authUrl };
   }
 
   async handleCallback(input: SocialCallbackInput): Promise<SocialCallbackOutput> {
-    if (input.platform !== 'tiktok') {
+    if (input.platform !== 'tiktok' && input.platform !== 'facebook') {
       throw new AppError(EC.SOCIAL400005, `Platform "${input.platform}" is not yet supported`, 400);
     }
 
@@ -125,18 +131,55 @@ export class SupabaseSocialAccountRepository implements ISocialAccountRepository
     await admin.from('social_oauth_states').delete().eq('state', input.state);
 
     try {
-      // Exchange code for tokens
-      const tokenData = await this.tiktokApi.exchangeCodeForToken(input.code);
+      let tokenData: { access_token: string, refresh_token?: string, expires_in: number, refresh_expires_in?: number, scope?: string };
+      let userInfo: { account_id: string, display_name: string, avatar_url: string | null, username?: string, is_verified?: boolean };
 
-      // Fetch user info
-      const userInfo = await this.tiktokApi.getUserInfo(tokenData.access_token);
+      if (input.platform === 'tiktok') {
+        const tiktokTokens = await this.tiktokApi.exchangeCodeForToken(input.code);
+        const tiktokUser = await this.tiktokApi.getUserInfo(tiktokTokens.access_token);
+        
+        tokenData = {
+          access_token: tiktokTokens.access_token,
+          refresh_token: tiktokTokens.refresh_token,
+          expires_in: tiktokTokens.expires_in,
+          refresh_expires_in: tiktokTokens.refresh_expires_in,
+          scope: tiktokTokens.scope
+        };
+        userInfo = {
+          account_id: tiktokUser.open_id,
+          display_name: tiktokUser.display_name,
+          avatar_url: tiktokUser.avatar_url,
+          username: tiktokUser.username,
+          is_verified: tiktokUser.is_verified
+        };
+      } else {
+        const fbTokens = await this.facebookApi.exchangeCodeForToken(input.code);
+        const fbUser = await this.facebookApi.getUserInfo(fbTokens.access_token);
+
+        tokenData = {
+          access_token: fbTokens.access_token,
+          expires_in: fbTokens.expires_in,
+          // Facebook doesn't return refresh token for standard OAuth, instead we get long-lived tokens
+        };
+        userInfo = {
+          account_id: fbUser.id,
+          display_name: fbUser.name,
+          avatar_url: fbUser.picture?.data.url || null,
+        };
+      }
 
       // Encrypt tokens before storing
       const encryptedAccessToken = encryptToken(tokenData.access_token);
-      const encryptedRefreshToken = encryptToken(tokenData.refresh_token);
+      const encryptedRefreshToken = tokenData.refresh_token ? encryptToken(tokenData.refresh_token) : null;
 
-      const expiresAt = new Date(Date.now() + tokenData.refresh_expires_in * 1000).toISOString();
-      const accessTokenExpiresAt = new Date(Date.now() + tokenData.expires_in * 1000).toISOString();
+      const expiresAt = tokenData.refresh_expires_in 
+        ? new Date(Date.now() + tokenData.refresh_expires_in * 1000).toISOString()
+        : (tokenData.expires_in ? new Date(Date.now() + tokenData.expires_in * 1000).toISOString() : null);
+      
+      const accessTokenExpiresAt = tokenData.expires_in 
+        ? new Date(Date.now() + tokenData.expires_in * 1000).toISOString()
+        : null;
+      
       const permissions = tokenData.scope ? tokenData.scope.split(',') : [];
 
       // Upsert social account (update if same platform + account_id exists)
@@ -145,7 +188,7 @@ export class SupabaseSocialAccountRepository implements ISocialAccountRepository
         .select('id')
         .eq('user_id', userId)
         .eq('platform', input.platform)
-        .eq('account_id', userInfo.open_id)
+        .eq('account_id', userInfo.account_id)
         .single();
 
       let accountId: string;
@@ -156,8 +199,8 @@ export class SupabaseSocialAccountRepository implements ISocialAccountRepository
           .update({
             account_name: userInfo.display_name,
             avatar_url: userInfo.avatar_url,
-            username: userInfo.username,
-            is_verified: userInfo.is_verified,
+            username: userInfo.username || null,
+            is_verified: userInfo.is_verified || false,
             access_token: encryptedAccessToken,
             refresh_token: encryptedRefreshToken,
             token_expires_at: expiresAt,
@@ -179,11 +222,11 @@ export class SupabaseSocialAccountRepository implements ISocialAccountRepository
           .insert({
             user_id: userId,
             platform: input.platform,
-            account_id: userInfo.open_id,
+            account_id: userInfo.account_id,
             account_name: userInfo.display_name,
             avatar_url: userInfo.avatar_url,
-            username: userInfo.username,
-            is_verified: userInfo.is_verified,
+            username: userInfo.username || null,
+            is_verified: userInfo.is_verified || false,
             access_token: encryptedAccessToken,
             refresh_token: encryptedRefreshToken,
             token_expires_at: expiresAt,
@@ -202,10 +245,10 @@ export class SupabaseSocialAccountRepository implements ISocialAccountRepository
 
       const isReconnect = !!existing;
 
-      logger.info(`TikTok account ${isReconnect ? 'reconnected' : 'connected'}`, {
+      logger.info(`${input.platform} account ${isReconnect ? 'reconnected' : 'connected'}`, {
         userId,
         platform: input.platform,
-        accountId: userInfo.open_id,
+        accountId: userInfo.account_id,
       });
 
       await this.activityLog.create({
@@ -216,7 +259,7 @@ export class SupabaseSocialAccountRepository implements ISocialAccountRepository
         details: {
           platform: input.platform,
           accountName: userInfo.display_name,
-          accountId: userInfo.open_id,
+          accountId: userInfo.account_id,
         },
       });
 

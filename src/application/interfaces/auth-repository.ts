@@ -20,6 +20,7 @@ export interface IAuthRepository {
   refresh(input: RefreshInput): Promise<RefreshOutput>;
   getMe(accessToken: string): Promise<MeOutput>;
   getGoogleOAuthUrl(redirectTo: string): Promise<OAuthUrlOutput>;
+  getFacebookOAuthUrl(redirectTo: string): Promise<OAuthUrlOutput>;
   exchangeOAuthCode(input: OAuthCallbackInput): Promise<OAuthCallbackOutput>;
   updateProfile(accessToken: string, input: UpdateProfileInput): Promise<UpdateProfileOutput>;
 }

@@ -30,6 +30,8 @@ spec:
               value: https://api.synchhub.com/api/v1/social-accounts/callback/tiktok
             - name: FRONTEND_URL
               value: https://synchhub.com
+            - name: FB_REDIRECT_URI
+              value: https://api.synchhub.com/api/v1/social-accounts/callback/facebook
             - name: SUPABASE_ANON_KEY
               valueFrom:
                 secretKeyRef:
@@ -60,6 +62,16 @@ spec:
                 secretKeyRef:
                   key: '2'
                   name: synchub-api-tiktok-client-secret
+            - name: FB_APP_ID
+              valueFrom:
+                secretKeyRef:
+                  key: '1'
+                  name: synchub-api-fb-app-id
+            - name: FB_APP_SECRET
+              valueFrom:
+                secretKeyRef:
+                  key: '1'
+                  name: synchub-api-fb-app-secret
           startupProbe:
             httpGet:
               path: /health

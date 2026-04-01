@@ -7,6 +7,7 @@ import { LogoutUseCase } from "@/application/use-cases/auth/logout";
 import { RefreshUseCase } from "@/application/use-cases/auth/refresh";
 import { GetMeUseCase } from "@/application/use-cases/auth/get-me";
 import { GoogleOAuthUseCase } from "@/application/use-cases/auth/google-oauth";
+import { FacebookOAuthUseCase } from "@/application/use-cases/auth/facebook-oauth";
 import { OAuthCallbackUseCase } from "@/application/use-cases/auth/oauth-callback";
 import { UpdateProfileUseCase } from "@/application/use-cases/auth/update-profile";
 import {
@@ -29,6 +30,7 @@ export class AuthController {
     private readonly refreshUseCase: RefreshUseCase,
     private readonly getMeUseCase: GetMeUseCase,
     private readonly googleOAuthUseCase: GoogleOAuthUseCase,
+    private readonly facebookOAuthUseCase: FacebookOAuthUseCase,
     private readonly oauthCallbackUseCase: OAuthCallbackUseCase,
     private readonly updateProfileUseCase: UpdateProfileUseCase,
   ) {}
@@ -123,6 +125,17 @@ export class AuthController {
     ctx.body = {
       code: "AUTH200005",
       message: "Google OAuth URL generated",
+      result,
+    };
+  };
+
+  facebookOAuth = async (ctx: GoogleOAuthCtx): Promise<void> => {
+    const redirectTo = ctx.query.redirectTo || `${ctx.origin}/api/v1/auth/callback`;
+    const result = await this.facebookOAuthUseCase.execute(redirectTo);
+    ctx.status = 200;
+    ctx.body = {
+      code: "AUTH200008",
+      message: "Facebook OAuth URL generated",
       result,
     };
   };

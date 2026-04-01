@@ -12,6 +12,7 @@ export function createAuthRouter(controller: AuthController, authMiddleware: Mid
   router.get('/me', authMiddleware, controller.getMe);
   router.patch('/me', authMiddleware, controller.updateProfile);
   router.get('/google', controller.googleOAuth);
+  router.get('/facebook', controller.facebookOAuth);
   router.post('/callback', controller.oauthCallback);
 
   return router;

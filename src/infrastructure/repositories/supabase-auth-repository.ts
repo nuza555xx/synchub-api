@@ -130,6 +130,20 @@ export class SupabaseAuthRepository implements IAuthRepository {
     return { url: data.url };
   }
 
+  async getFacebookOAuthUrl(redirectTo: string): Promise<OAuthUrlOutput> {
+    const client = this.supabase.createClient();
+    const { data, error } = await client.auth.signInWithOAuth({
+      provider: 'facebook',
+      options: { redirectTo },
+    });
+
+    if (error || !data.url) {
+      throw new AppError(EC.AUTH400002, error?.message || 'Failed to generate Facebook OAuth URL', 400);
+    }
+
+    return { url: data.url };
+  }
+
   async exchangeOAuthCode(input: OAuthCallbackInput): Promise<OAuthCallbackOutput> {
     const client = this.supabase.createClient();
     const { data, error } = await client.auth.exchangeCodeForSession(input.code);
