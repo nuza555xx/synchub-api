@@ -14,6 +14,7 @@ import {
 import { SupabaseClientFactory } from '@/infrastructure/database/supabase';
 import { TikTokApiClient } from '@/infrastructure/external-services/tiktok-api';
 import { FacebookApiClient } from '@/infrastructure/external-services/facebook-api';
+import { XApiClient } from '@/infrastructure/external-services/x-api';
 import { encryptToken, decryptToken } from '@/infrastructure/encryption/aes';
 import { AppError, NotFoundError } from '@/domain/errors/app-error';
 import * as EC from '@/domain/enums/error-codes';
@@ -26,6 +27,7 @@ export class SupabaseSocialAccountRepository implements ISocialAccountRepository
     private readonly supabase: SupabaseClientFactory,
     private readonly tiktokApi: TikTokApiClient,
     private readonly facebookApi: FacebookApiClient,
+    private readonly xApi: XApiClient,
     private readonly activityLog: IActivityLogRepository,
   ) {}
 
@@ -84,34 +86,39 @@ export class SupabaseSocialAccountRepository implements ISocialAccountRepository
   }
 
   async connect(input: ConnectSocialInput): Promise<ConnectSocialOutput> {
-    if (input.platform !== 'tiktok' && input.platform !== 'facebook') {
+    const admin = this.supabase.getAdmin();
+    let state: string;
+    let authUrl: string;
+    let codeVerifier: string | undefined;
+
+    if (input.platform === 'tiktok') {
+      state = this.tiktokApi.generateState();
+      authUrl = this.tiktokApi.generateAuthUrl(state, input.scopes);
+    } else if (input.platform === 'facebook') {
+      state = this.facebookApi.generateState();
+      authUrl = this.facebookApi.generateAuthUrl(state, input.scopes);
+    } else if (input.platform === 'twitter') {
+      state = this.xApi.generateState();
+      const pkce = this.xApi.generatePKCE();
+      codeVerifier = pkce.verifier;
+      authUrl = this.xApi.generateAuthUrl(state, pkce.challenge, input.scopes);
+    } else {
       throw new AppError(EC.SOCIAL400005, `Platform "${input.platform}" is not yet supported`, 400);
     }
 
-    const state = input.platform === 'tiktok' 
-      ? this.tiktokApi.generateState() 
-      : this.facebookApi.generateState();
-
-    // Store state in DB for CSRF verification
-    const admin = this.supabase.getAdmin();
+    // Store state in DB for CSRF verification (and PKCE if needed)
     await admin.from('social_oauth_states').insert({
       state,
       user_id: input.userId,
       platform: input.platform,
+      code_verifier: codeVerifier || null,
       created_at: new Date().toISOString(),
     });
 
-    const authUrl = input.platform === 'tiktok'
-      ? this.tiktokApi.generateAuthUrl(state, input.scopes)
-      : this.facebookApi.generateAuthUrl(state, input.scopes);
     return { authUrl };
   }
 
   async handleCallback(input: SocialCallbackInput): Promise<SocialCallbackOutput> {
-    if (input.platform !== 'tiktok' && input.platform !== 'facebook') {
-      throw new AppError(EC.SOCIAL400005, `Platform "${input.platform}" is not yet supported`, 400);
-    }
-
     const admin = this.supabase.getAdmin();
 
     // Verify state and resolve userId (no auth required on callback)
@@ -152,20 +159,62 @@ export class SupabaseSocialAccountRepository implements ISocialAccountRepository
           username: tiktokUser.username,
           is_verified: tiktokUser.is_verified
         };
-      } else {
-        const fbTokens = await this.facebookApi.exchangeCodeForToken(input.code);
-        const fbUser = await this.facebookApi.getUserInfo(fbTokens.access_token);
+      } else if (input.platform === 'twitter') {
+        if (!stateRow.code_verifier) {
+          throw new AppError(EC.SOCIAL400003, 'Missing code verifier for X (Twitter) authentication', 400);
+        }
+        const xTokens = await this.xApi.exchangeCodeForToken(input.code, stateRow.code_verifier);
+        const xUser = await this.xApi.getUserInfo(xTokens.access_token);
 
         tokenData = {
-          access_token: fbTokens.access_token,
-          expires_in: fbTokens.expires_in,
-          // Facebook doesn't return refresh token for standard OAuth, instead we get long-lived tokens
+          access_token: xTokens.access_token,
+          refresh_token: xTokens.refresh_token,
+          expires_in: xTokens.expires_in,
+          scope: xTokens.scope,
+        };
+        userInfo = {
+          account_id: xUser.id,
+          display_name: xUser.name,
+          avatar_url: xUser.profile_image_url || null,
+          username: xUser.username,
+        };
+      } else if (input.platform === 'facebook') {
+        // Facebook Business Login flow
+        const fbShortLivedTokens = await this.facebookApi.exchangeCodeForToken(input.code);
+
+        // Exchange short-lived token (~1 hour) for long-lived token (~60 days)
+        const fbLongLivedTokens = await this.facebookApi.getLongLivedToken(fbShortLivedTokens.access_token);
+
+        const fbUser = await this.facebookApi.getUserInfo(fbLongLivedTokens.access_token);
+
+        // Fetch user's pages (Business Login grants page management)
+        const fbPages = await this.facebookApi.getUserPages(fbLongLivedTokens.access_token);
+
+        // Debug token to get actual granted scopes
+        let grantedScopes: string[] = [];
+        try {
+          const tokenInfo = await this.facebookApi.debugToken(fbLongLivedTokens.access_token);
+          grantedScopes = tokenInfo.scopes || [];
+        } catch {
+          logger.warn('Failed to debug Facebook token, continuing without scope info');
+        }
+
+        tokenData = {
+          access_token: fbLongLivedTokens.access_token,
+          expires_in: fbLongLivedTokens.expires_in || 5184000, 
+          scope: grantedScopes.join(','),
         };
         userInfo = {
           account_id: fbUser.id,
           display_name: fbUser.name,
           avatar_url: fbUser.picture?.data.url || null,
         };
+
+        if (fbPages.length > 0) {
+          logger.info('Facebook pages found', { userId, pageCount: fbPages.length });
+        }
+      } else {
+        throw new AppError(EC.SOCIAL400005, `Platform "${input.platform}" callback is not yet supported`, 400);
       }
 
       // Encrypt tokens before storing
@@ -180,9 +229,9 @@ export class SupabaseSocialAccountRepository implements ISocialAccountRepository
         ? new Date(Date.now() + tokenData.expires_in * 1000).toISOString()
         : null;
       
-      const permissions = tokenData.scope ? tokenData.scope.split(',') : [];
+      const permissions = tokenData.scope ? tokenData.scope.split(input.platform === 'twitter' ? ' ' : ',') : [];
 
-      // Upsert social account (update if same platform + account_id exists)
+      // Upsert social account
       const { data: existing } = await admin
         .from('social_accounts')
         .select('id')
@@ -212,9 +261,7 @@ export class SupabaseSocialAccountRepository implements ISocialAccountRepository
           .select('id')
           .single();
 
-        if (updateError || !updated) {
-          throw new AppError(EC.SOCIAL400003, 'Failed to update social account', 400);
-        }
+        if (updateError || !updated) throw new AppError(EC.SOCIAL400003, 'Failed to update social account', 400);
         accountId = updated.id;
       } else {
         const { data: inserted, error: insertError } = await admin
@@ -237,57 +284,26 @@ export class SupabaseSocialAccountRepository implements ISocialAccountRepository
           .select('id')
           .single();
 
-        if (insertError || !inserted) {
-          throw new AppError(EC.SOCIAL400003, 'Failed to save social account', 400);
-        }
+        if (insertError || !inserted) throw new AppError(EC.SOCIAL400003, 'Failed to save social account', 400);
         accountId = inserted.id;
       }
 
       const isReconnect = !!existing;
-
-      logger.info(`${input.platform} account ${isReconnect ? 'reconnected' : 'connected'}`, {
-        userId,
-        platform: input.platform,
-        accountId: userInfo.account_id,
-      });
+      logger.info(`${input.platform} account ${isReconnect ? 'reconnected' : 'connected'}`, { userId, platform: input.platform, accountId: userInfo.account_id });
 
       await this.activityLog.create({
         userId,
         action: isReconnect ? 'social_account.reconnect' : 'social_account.connect',
         resourceType: 'social_account',
         resourceId: accountId,
-        details: {
-          platform: input.platform,
-          accountName: userInfo.display_name,
-          accountId: userInfo.account_id,
-        },
+        details: { platform: input.platform, accountName: userInfo.display_name, accountId: userInfo.account_id },
       });
 
-      return {
-        id: accountId,
-        platform: input.platform,
-        accountName: userInfo.display_name,
-        tokenStatus: 'active',
-      };
+      return { id: accountId, platform: input.platform as any, accountName: userInfo.display_name, tokenStatus: 'active' };
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Connection failed';
-
-      logger.error('Social account connection failed', {
-        userId,
-        platform: input.platform,
-        error: errorMessage,
-      });
-
-      await this.activityLog.create({
-        userId,
-        action: 'social_account.connect_failed',
-        resourceType: 'social_account',
-        details: {
-          platform: input.platform,
-          error: errorMessage,
-        },
-      });
-
+      logger.error('Social account connection failed', { userId, platform: input.platform, error: errorMessage });
+      await this.activityLog.create({ userId, action: 'social_account.connect_failed', resourceType: 'social_account', details: { platform: input.platform, error: errorMessage } });
       throw err;
     }
   }
@@ -301,131 +317,53 @@ export class SupabaseSocialAccountRepository implements ISocialAccountRepository
       .eq('user_id', input.userId)
       .single();
 
-    if (error || !row) {
-      throw new NotFoundError('Social account not found');
+    if (error || !row) throw new NotFoundError('Social account not found');
+
+    if (row.platform === 'facebook') {
+      const currentAccessToken = decryptToken(row.access_token);
+      const longLivedTokens = await this.facebookApi.getLongLivedToken(currentAccessToken);
+      const encryptedAccessToken = encryptToken(longLivedTokens.access_token);
+      const expiresAt = new Date(Date.now() + (longLivedTokens.expires_in || 5184000) * 1000).toISOString();
+
+      await admin.from('social_accounts').update({ access_token: encryptedAccessToken, token_expires_at: expiresAt, access_token_expires_at: expiresAt, updated_at: new Date().toISOString() }).eq('id', input.socialAccountId);
+      return { tokenStatus: 'active', expiresAt };
     }
 
-    if (row.platform !== 'tiktok') {
-      throw new AppError(EC.SOCIAL400005, `Platform "${row.platform}" is not yet supported`, 400);
+    if (row.platform === 'tiktok' || row.platform === 'twitter') {
+      const currentRefreshToken = decryptToken(row.refresh_token);
+      const tokenData = row.platform === 'tiktok' 
+        ? await this.tiktokApi.refreshAccessToken(currentRefreshToken)
+        : await this.xApi.refreshAccessToken(currentRefreshToken);
+
+      const encryptedAccessToken = encryptToken(tokenData.access_token);
+      const encryptedRefreshToken = encryptToken(tokenData.refresh_token!);
+      const expiresAt = tokenData.refresh_expires_in 
+        ? new Date(Date.now() + tokenData.refresh_expires_in * 1000).toISOString()
+        : new Date(Date.now() + tokenData.expires_in * 1000).toISOString();
+      const accessTokenExpiresAt = new Date(Date.now() + tokenData.expires_in * 1000).toISOString();
+
+      await admin.from('social_accounts').update({ access_token: encryptedAccessToken, refresh_token: encryptedRefreshToken, token_expires_at: expiresAt, access_token_expires_at: accessTokenExpiresAt, updated_at: new Date().toISOString() }).eq('id', input.socialAccountId);
+      return { tokenStatus: 'active', expiresAt };
     }
 
-    const currentRefreshToken = decryptToken(row.refresh_token);
-    const tokenData = await this.tiktokApi.refreshAccessToken(currentRefreshToken);
-
-    const encryptedAccessToken = encryptToken(tokenData.access_token);
-    const encryptedRefreshToken = encryptToken(tokenData.refresh_token);
-    const expiresAt = new Date(Date.now() + tokenData.refresh_expires_in * 1000).toISOString();
-    const accessTokenExpiresAt = new Date(Date.now() + tokenData.expires_in * 1000).toISOString();
-
-    const { error: updateError } = await admin
-      .from('social_accounts')
-      .update({
-        access_token: encryptedAccessToken,
-        refresh_token: encryptedRefreshToken,
-        token_expires_at: expiresAt,
-        access_token_expires_at: accessTokenExpiresAt,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', input.socialAccountId);
-
-    if (updateError) {
-      throw new AppError(EC.SOCIAL400004, 'Failed to update refreshed token', 400);
-    }
-
-    logger.info('TikTok token refreshed', {
-      userId: input.userId,
-      socialAccountId: input.socialAccountId,
-    });
-
-    await this.activityLog.create({
-      userId: input.userId,
-      action: 'social_account.refresh',
-      resourceType: 'social_account',
-      resourceId: input.socialAccountId,
-      details: { platform: row.platform },
-    });
-
-    return {
-      tokenStatus: 'active',
-      expiresAt,
-    };
+    throw new AppError(EC.SOCIAL400005, `Platform "${row.platform}" refresh is not yet supported`, 400);
   }
 
   async disconnect(input: DisconnectSocialInput): Promise<void> {
     const admin = this.supabase.getAdmin();
-    const { data: row, error: findError } = await admin
-      .from('social_accounts')
-      .select('id, platform')
-      .eq('id', input.socialAccountId)
-      .eq('user_id', input.userId)
-      .single();
-
-    if (findError || !row) {
-      throw new NotFoundError('Social account not found');
-    }
-
-    const { error } = await admin
-      .from('social_accounts')
-      .delete()
-      .eq('id', input.socialAccountId);
-
-    if (error) {
-      throw new AppError(EC.SYS500001, error.message, 500);
-    }
-
-    logger.info('Social account disconnected', {
-      userId: input.userId,
-      socialAccountId: input.socialAccountId,
-      platform: row.platform,
-    });
-
-    await this.activityLog.create({
-      userId: input.userId,
-      action: 'social_account.disconnect',
-      resourceType: 'social_account',
-      resourceId: input.socialAccountId,
-      details: {
-        platform: row.platform,
-      },
-    });
+    const { data: row, error: findError } = await admin.from('social_accounts').select('id, platform').eq('id', input.socialAccountId).eq('user_id', input.userId).single();
+    if (findError || !row) throw new NotFoundError('Social account not found');
+    await admin.from('social_accounts').delete().eq('id', input.socialAccountId);
+    logger.info('Social account disconnected', { userId: input.userId, socialAccountId: input.socialAccountId, platform: row.platform });
+    await this.activityLog.create({ userId: input.userId, action: 'social_account.disconnect', resourceType: 'social_account', resourceId: input.socialAccountId, details: { platform: row.platform } });
   }
 
   async handleOAuthError(input: OAuthErrorInput): Promise<void> {
     const admin = this.supabase.getAdmin();
-
-    // Look up userId from state (may not exist if state is invalid/expired)
-    const { data: stateRow } = await admin
-      .from('social_oauth_states')
-      .select('user_id')
-      .eq('state', input.state)
-      .single();
-
-    // Clean up used state
-    if (stateRow) {
-      await admin.from('social_oauth_states').delete().eq('state', input.state);
-    }
-
+    const { data: stateRow } = await admin.from('social_oauth_states').select('user_id').eq('state', input.state).single();
+    if (stateRow) await admin.from('social_oauth_states').delete().eq('state', input.state);
     const userId = stateRow?.user_id;
-
-    logger.info('OAuth authorization denied', {
-      userId,
-      platform: input.platform,
-      error: input.error,
-      errorDescription: input.errorDescription,
-    });
-
-    if (userId) {
-      await this.activityLog.create({
-        userId,
-        action: 'social_account.connect_failed',
-        resourceType: 'social_account',
-        details: {
-          platform: input.platform,
-          error: input.error,
-          errorDescription: input.errorDescription,
-        },
-      });
-    }
+    if (userId) await this.activityLog.create({ userId, action: 'social_account.connect_failed', resourceType: 'social_account', details: { platform: input.platform, error: input.error, errorDescription: input.errorDescription } });
   }
 
   private computeTokenStatus(tokenExpiresAt: string | null): TokenStatus {
@@ -436,7 +374,7 @@ export class SupabaseSocialAccountRepository implements ISocialAccountRepository
   private getRequiredPermissions(platform: string): string[] {
     const permissionMap: Record<string, string[]> = {
       tiktok: ['user.info.basic', 'video.publish', 'video.list'],
-      facebook: ['pages_manage_posts', 'pages_read_engagement'],
+      facebook: ['pages_read_engagement', 'pages_manage_posts'],
       twitter: ['tweet.read', 'tweet.write', 'users.read'],
       linkedin: ['w_member_social', 'r_liteprofile'],
     };

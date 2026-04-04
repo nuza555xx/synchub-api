@@ -45,6 +45,7 @@ import { SupabaseActivityLogRepository } from './infrastructure/repositories/sup
 import { SupabaseDraftPostRepository } from './infrastructure/repositories/supabase-post-repository';
 import { TikTokApiClient } from './infrastructure/external-services/tiktok-api';
 import { FacebookApiClient } from './infrastructure/external-services/facebook-api';
+import { XApiClient } from './infrastructure/external-services/x-api';
 import { logger } from './infrastructure/logger';
 import { PublishPostUseCase } from './application/use-cases/posts/publish-post';
 
@@ -69,8 +70,9 @@ const authController = new AuthController(
 
 const tiktokApi = new TikTokApiClient();
 const facebookApi = new FacebookApiClient();
+const xApi = new XApiClient();
 const activityLogRepo = new SupabaseActivityLogRepository(supabaseFactory);
-const socialAccountRepo = new SupabaseSocialAccountRepository(supabaseFactory, tiktokApi, facebookApi, activityLogRepo);
+const socialAccountRepo = new SupabaseSocialAccountRepository(supabaseFactory, tiktokApi, facebookApi, xApi, activityLogRepo);
 const socialAccountController = new SocialAccountController(
   new ListSocialAccountsUseCase(socialAccountRepo),
   new GetSocialAccountHealthUseCase(socialAccountRepo),

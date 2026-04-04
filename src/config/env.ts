@@ -21,4 +21,9 @@ export const env = {
     appSecret: process.env.FB_APP_SECRET || '',
     redirectUri: process.env.FB_REDIRECT_URI || '',
   },
+  x: {
+    clientId: process.env.X_CLIENT_ID || '',
+    clientSecret: process.env.X_CLIENT_SECRET || '',
+    redirectUri: process.env.X_REDIRECT_URI || '',
+  },
 };

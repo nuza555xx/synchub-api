@@ -32,6 +32,8 @@ spec:
               value: https://synchhub.com
             - name: FB_REDIRECT_URI
               value: https://api.synchhub.com/api/v1/social-accounts/callback/facebook
+            - name: X_REDIRECT_URI
+              value: https://api.synchhub.com/api/v1/social-accounts/callback/twitter
             - name: SUPABASE_ANON_KEY
               valueFrom:
                 secretKeyRef:
@@ -72,6 +74,16 @@ spec:
                 secretKeyRef:
                   key: '1'
                   name: synchub-api-fb-app-secret
+            - name: X_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  key: '1'
+                  name: synchub-api-x-client-id
+            - name: X_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  key: '1'
+                  name: synchub-api-x-client-secret
           startupProbe:
             httpGet:
               path: /health
