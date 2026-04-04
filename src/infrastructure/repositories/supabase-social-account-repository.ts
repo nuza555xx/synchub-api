@@ -22,6 +22,23 @@ import { TokenStatus } from '@/domain/entities/social-account';
 import { IActivityLogRepository } from '@/application/interfaces/activity-log-repository';
 import { logger } from '@/infrastructure/logger';
 
+interface PlatformCallbackResult {
+  tokenData: {
+    accessToken: string;
+    refreshToken?: string;
+    expiresIn: number;
+    refreshExpiresIn?: number;
+    scope?: string;
+  };
+  userInfo: {
+    accountId: string;
+    displayName: string;
+    avatarUrl: string | null;
+    username?: string;
+    isVerified?: boolean;
+  };
+}
+
 export class SupabaseSocialAccountRepository implements ISocialAccountRepository {
   constructor(
     private readonly supabase: SupabaseClientFactory,
@@ -106,7 +123,6 @@ export class SupabaseSocialAccountRepository implements ISocialAccountRepository
       throw new AppError(EC.SOCIAL400005, `Platform "${input.platform}" is not yet supported`, 400);
     }
 
-    // Store state in DB for CSRF verification (and PKCE if needed)
     await admin.from('social_oauth_states').insert({
       state,
       user_id: input.userId,
@@ -121,7 +137,6 @@ export class SupabaseSocialAccountRepository implements ISocialAccountRepository
   async handleCallback(input: SocialCallbackInput): Promise<SocialCallbackOutput> {
     const admin = this.supabase.getAdmin();
 
-    // Verify state and resolve userId (no auth required on callback)
     const { data: stateRow, error: stateError } = await admin
       .from('social_oauth_states')
       .select('*')
@@ -133,179 +148,186 @@ export class SupabaseSocialAccountRepository implements ISocialAccountRepository
     }
 
     const userId: string = stateRow.user_id;
-
-    // Clean up used state
     await admin.from('social_oauth_states').delete().eq('state', input.state);
 
     try {
-      let tokenData: { access_token: string, refresh_token?: string, expires_in: number, refresh_expires_in?: number, scope?: string };
-      let userInfo: { account_id: string, display_name: string, avatar_url: string | null, username?: string, is_verified?: boolean };
+      let result: PlatformCallbackResult;
 
-      if (input.platform === 'tiktok') {
-        const tiktokTokens = await this.tiktokApi.exchangeCodeForToken(input.code);
-        const tiktokUser = await this.tiktokApi.getUserInfo(tiktokTokens.access_token);
-        
-        tokenData = {
-          access_token: tiktokTokens.access_token,
-          refresh_token: tiktokTokens.refresh_token,
-          expires_in: tiktokTokens.expires_in,
-          refresh_expires_in: tiktokTokens.refresh_expires_in,
-          scope: tiktokTokens.scope
-        };
-        userInfo = {
-          account_id: tiktokUser.open_id,
-          display_name: tiktokUser.display_name,
-          avatar_url: tiktokUser.avatar_url,
-          username: tiktokUser.username,
-          is_verified: tiktokUser.is_verified
-        };
-      } else if (input.platform === 'twitter') {
-        if (!stateRow.code_verifier) {
-          throw new AppError(EC.SOCIAL400003, 'Missing code verifier for X (Twitter) authentication', 400);
-        }
-        const xTokens = await this.xApi.exchangeCodeForToken(input.code, stateRow.code_verifier);
-        const xUser = await this.xApi.getUserInfo(xTokens.access_token);
-
-        tokenData = {
-          access_token: xTokens.access_token,
-          refresh_token: xTokens.refresh_token,
-          expires_in: xTokens.expires_in,
-          scope: xTokens.scope,
-        };
-        userInfo = {
-          account_id: xUser.id,
-          display_name: xUser.name,
-          avatar_url: xUser.profile_image_url || null,
-          username: xUser.username,
-        };
-      } else if (input.platform === 'facebook') {
-        // Facebook Business Login flow
-        const fbShortLivedTokens = await this.facebookApi.exchangeCodeForToken(input.code);
-
-        // Exchange short-lived token (~1 hour) for long-lived token (~60 days)
-        const fbLongLivedTokens = await this.facebookApi.getLongLivedToken(fbShortLivedTokens.access_token);
-
-        const fbUser = await this.facebookApi.getUserInfo(fbLongLivedTokens.access_token);
-
-        // Fetch user's pages (Business Login grants page management)
-        const fbPages = await this.facebookApi.getUserPages(fbLongLivedTokens.access_token);
-
-        // Debug token to get actual granted scopes
-        let grantedScopes: string[] = [];
-        try {
-          const tokenInfo = await this.facebookApi.debugToken(fbLongLivedTokens.access_token);
-          grantedScopes = tokenInfo.scopes || [];
-        } catch {
-          logger.warn('Failed to debug Facebook token, continuing without scope info');
-        }
-
-        tokenData = {
-          access_token: fbLongLivedTokens.access_token,
-          expires_in: fbLongLivedTokens.expires_in || 5184000, 
-          scope: grantedScopes.join(','),
-        };
-        userInfo = {
-          account_id: fbUser.id,
-          display_name: fbUser.name,
-          avatar_url: fbUser.picture?.data.url || null,
-        };
-
-        if (fbPages.length > 0) {
-          logger.info('Facebook pages found', { userId, pageCount: fbPages.length });
-        }
-      } else {
-        throw new AppError(EC.SOCIAL400005, `Platform "${input.platform}" callback is not yet supported`, 400);
+      switch (input.platform) {
+        case 'tiktok':
+          result = await this.handleTikTokCallback(input.code);
+          break;
+        case 'facebook':
+          result = await this.handleFacebookCallback(input.code, userId);
+          break;
+        case 'twitter':
+          if (!stateRow.code_verifier) throw new AppError(EC.SOCIAL400003, 'Missing code verifier', 400);
+          result = await this.handleTwitterCallback(input.code, stateRow.code_verifier);
+          break;
+        default:
+          throw new AppError(EC.SOCIAL400005, `Platform "${input.platform}" not supported`, 400);
       }
 
-      // Encrypt tokens before storing
-      const encryptedAccessToken = encryptToken(tokenData.access_token);
-      const encryptedRefreshToken = tokenData.refresh_token ? encryptToken(tokenData.refresh_token) : null;
+      const { tokenData, userInfo } = result;
 
-      const expiresAt = tokenData.refresh_expires_in 
-        ? new Date(Date.now() + tokenData.refresh_expires_in * 1000).toISOString()
-        : (tokenData.expires_in ? new Date(Date.now() + tokenData.expires_in * 1000).toISOString() : null);
-      
-      const accessTokenExpiresAt = tokenData.expires_in 
-        ? new Date(Date.now() + tokenData.expires_in * 1000).toISOString()
+      // Encrypt tokens
+      const encryptedAccessToken = encryptToken(tokenData.accessToken);
+      const encryptedRefreshToken = tokenData.refreshToken ? encryptToken(tokenData.refreshToken) : null;
+
+      // Compute expiration dates
+      let expiresAt: string | null = null;
+      if (tokenData.refreshExpiresIn) {
+        expiresAt = new Date(Date.now() + tokenData.refreshExpiresIn * 1000).toISOString();
+      } else if (input.platform === 'twitter' && tokenData.refreshToken) {
+        expiresAt = new Date(Date.now() + 15552000 * 1000).toISOString(); // 180 days default
+      } else if (tokenData.expiresIn) {
+        expiresAt = new Date(Date.now() + tokenData.expiresIn * 1000).toISOString();
+      }
+
+      const accessTokenExpiresAt = tokenData.expiresIn 
+        ? new Date(Date.now() + tokenData.expiresIn * 1000).toISOString()
         : null;
-      
+
       const permissions = tokenData.scope ? tokenData.scope.split(input.platform === 'twitter' ? ' ' : ',') : [];
 
-      // Upsert social account
+      // Upsert account
       const { data: existing } = await admin
         .from('social_accounts')
         .select('id')
         .eq('user_id', userId)
         .eq('platform', input.platform)
-        .eq('account_id', userInfo.account_id)
+        .eq('account_id', userInfo.accountId)
         .single();
 
       let accountId: string;
+      const accountPayload = {
+        account_name: userInfo.displayName,
+        avatar_url: userInfo.avatarUrl,
+        username: userInfo.username || null,
+        is_verified: userInfo.isVerified || false,
+        access_token: encryptedAccessToken,
+        refresh_token: encryptedRefreshToken,
+        token_expires_at: expiresAt,
+        access_token_expires_at: accessTokenExpiresAt,
+        permissions,
+        updated_at: new Date().toISOString(),
+      };
 
       if (existing) {
         const { data: updated, error: updateError } = await admin
           .from('social_accounts')
-          .update({
-            account_name: userInfo.display_name,
-            avatar_url: userInfo.avatar_url,
-            username: userInfo.username || null,
-            is_verified: userInfo.is_verified || false,
-            access_token: encryptedAccessToken,
-            refresh_token: encryptedRefreshToken,
-            token_expires_at: expiresAt,
-            access_token_expires_at: accessTokenExpiresAt,
-            permissions,
-            updated_at: new Date().toISOString(),
-          })
+          .update(accountPayload)
           .eq('id', existing.id)
           .select('id')
           .single();
-
-        if (updateError || !updated) throw new AppError(EC.SOCIAL400003, 'Failed to update social account', 400);
+        if (updateError || !updated) throw new AppError(EC.SOCIAL400003, 'Failed to update account', 400);
         accountId = updated.id;
       } else {
         const { data: inserted, error: insertError } = await admin
           .from('social_accounts')
           .insert({
+            ...accountPayload,
             user_id: userId,
             platform: input.platform,
-            account_id: userInfo.account_id,
-            account_name: userInfo.display_name,
-            avatar_url: userInfo.avatar_url,
-            username: userInfo.username || null,
-            is_verified: userInfo.is_verified || false,
-            access_token: encryptedAccessToken,
-            refresh_token: encryptedRefreshToken,
-            token_expires_at: expiresAt,
-            access_token_expires_at: accessTokenExpiresAt,
-            permissions,
+            account_id: userInfo.accountId,
             connected_at: new Date().toISOString(),
           })
           .select('id')
           .single();
-
-        if (insertError || !inserted) throw new AppError(EC.SOCIAL400003, 'Failed to save social account', 400);
+        if (insertError || !inserted) throw new AppError(EC.SOCIAL400003, 'Failed to save account', 400);
         accountId = inserted.id;
       }
 
       const isReconnect = !!existing;
-      logger.info(`${input.platform} account ${isReconnect ? 'reconnected' : 'connected'}`, { userId, platform: input.platform, accountId: userInfo.account_id });
+      logger.info(`${input.platform} connected`, { userId, platform: input.platform, accountId: userInfo.accountId });
 
       await this.activityLog.create({
         userId,
         action: isReconnect ? 'social_account.reconnect' : 'social_account.connect',
         resourceType: 'social_account',
         resourceId: accountId,
-        details: { platform: input.platform, accountName: userInfo.display_name, accountId: userInfo.account_id },
+        details: { platform: input.platform, accountName: userInfo.displayName, accountId: userInfo.accountId },
       });
 
-      return { id: accountId, platform: input.platform as any, accountName: userInfo.display_name, tokenStatus: 'active' };
+      return { id: accountId, platform: input.platform as any, accountName: userInfo.displayName, tokenStatus: 'active' };
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Connection failed';
-      logger.error('Social account connection failed', { userId, platform: input.platform, error: errorMessage });
+      logger.error('Callback failed', { userId, platform: input.platform, error: errorMessage });
       await this.activityLog.create({ userId, action: 'social_account.connect_failed', resourceType: 'social_account', details: { platform: input.platform, error: errorMessage } });
       throw err;
     }
+  }
+
+  private async handleTikTokCallback(code: string): Promise<PlatformCallbackResult> {
+    const tokens = await this.tiktokApi.exchangeCodeForToken(code);
+    const user = await this.tiktokApi.getUserInfo(tokens.access_token);
+    return {
+      tokenData: {
+        accessToken: tokens.access_token,
+        refreshToken: tokens.refresh_token,
+        expiresIn: tokens.expires_in,
+        refreshExpiresIn: tokens.refresh_expires_in,
+        scope: tokens.scope,
+      },
+      userInfo: {
+        accountId: user.open_id,
+        displayName: user.display_name,
+        avatarUrl: user.avatar_url,
+        username: user.username,
+        isVerified: user.is_verified,
+      },
+    };
+  }
+
+  private async handleFacebookCallback(code: string, userId: string): Promise<PlatformCallbackResult> {
+    const shortTokens = await this.facebookApi.exchangeCodeForToken(code);
+    const longTokens = await this.facebookApi.getLongLivedToken(shortTokens.access_token);
+    const user = await this.facebookApi.getUserInfo(longTokens.access_token);
+    const pages = await this.facebookApi.getUserPages(longTokens.access_token);
+
+    let grantedScopes: string[] = [];
+    try {
+      const tokenInfo = await this.facebookApi.debugToken(longTokens.access_token);
+      grantedScopes = tokenInfo.scopes || [];
+    } catch {
+      logger.warn('FB scope debug failed');
+    }
+
+    if (pages.length > 0) {
+      logger.info('FB pages found', { userId, count: pages.length });
+    }
+
+    return {
+      tokenData: {
+        accessToken: longTokens.access_token,
+        expiresIn: longTokens.expires_in || 5184000,
+        scope: grantedScopes.join(','),
+      },
+      userInfo: {
+        accountId: user.id,
+        displayName: user.name,
+        avatarUrl: user.picture?.data.url || null,
+      },
+    };
+  }
+
+  private async handleTwitterCallback(code: string, verifier: string): Promise<PlatformCallbackResult> {
+    const tokens = await this.xApi.exchangeCodeForToken(code, verifier);
+    const user = await this.xApi.getUserInfo(tokens.access_token);
+    return {
+      tokenData: {
+        accessToken: tokens.access_token,
+        refreshToken: tokens.refresh_token,
+        expiresIn: tokens.expires_in,
+        scope: tokens.scope,
+      },
+      userInfo: {
+        accountId: user.id,
+        displayName: user.name,
+        avatarUrl: user.profile_image_url || null,
+        username: user.username,
+      },
+    };
   }
 
   async refreshToken(input: RefreshSocialTokenInput): Promise<RefreshSocialTokenOutput> {
@@ -336,13 +358,22 @@ export class SupabaseSocialAccountRepository implements ISocialAccountRepository
         : await this.xApi.refreshAccessToken(currentRefreshToken);
 
       const encryptedAccessToken = encryptToken(tokenData.access_token);
-      const encryptedRefreshToken = encryptToken(tokenData.refresh_token!);
-      const expiresAt = tokenData.refresh_expires_in 
-        ? new Date(Date.now() + tokenData.refresh_expires_in * 1000).toISOString()
-        : new Date(Date.now() + tokenData.expires_in * 1000).toISOString();
+      const encryptedRefreshToken = tokenData.refresh_token ? encryptToken(tokenData.refresh_token) : null;
+      
+      const expiresAt = (row.platform === 'tiktok' && (tokenData as any).refresh_expires_in)
+        ? new Date(Date.now() + (tokenData as any).refresh_expires_in * 1000).toISOString()
+        : new Date(Date.now() + 15552000 * 1000).toISOString();
+      
       const accessTokenExpiresAt = new Date(Date.now() + tokenData.expires_in * 1000).toISOString();
 
-      await admin.from('social_accounts').update({ access_token: encryptedAccessToken, refresh_token: encryptedRefreshToken, token_expires_at: expiresAt, access_token_expires_at: accessTokenExpiresAt, updated_at: new Date().toISOString() }).eq('id', input.socialAccountId);
+      await admin.from('social_accounts').update({ 
+        access_token: encryptedAccessToken, 
+        refresh_token: encryptedRefreshToken, 
+        token_expires_at: expiresAt, 
+        access_token_expires_at: accessTokenExpiresAt, 
+        updated_at: new Date().toISOString() 
+      }).eq('id', input.socialAccountId);
+      
       return { tokenStatus: 'active', expiresAt };
     }
 
@@ -375,7 +406,7 @@ export class SupabaseSocialAccountRepository implements ISocialAccountRepository
     const permissionMap: Record<string, string[]> = {
       tiktok: ['user.info.basic', 'video.publish', 'video.list'],
       facebook: ['pages_read_engagement', 'pages_manage_posts'],
-      twitter: ['tweet.read', 'tweet.write', 'users.read'],
+      twitter: ['tweet.read', 'tweet.write', 'users.read', 'offline.access'],
       linkedin: ['w_member_social', 'r_liteprofile'],
     };
     return permissionMap[platform] || [];

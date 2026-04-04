@@ -55,6 +55,7 @@ export class XApiClient {
       state,
       code_challenge: codeChallenge,
       code_challenge_method: "S256",
+      prompt: "consent",
     });
 
     return `${X_AUTH_URL}?${params.toString()}`;
