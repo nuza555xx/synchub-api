@@ -58,6 +58,8 @@ export class SupabaseDraftPostRepository implements IDraftPostRepository {
     if (input.content !== undefined) updates.content = input.content;
     if (input.socialAccountIds !== undefined) updates.social_account_ids = input.socialAccountIds;
     if (input.mediaPaths !== undefined) updates.media_urls = input.mediaPaths;
+    if (input.scheduledAt !== undefined) updates.scheduled_at = input.scheduledAt;
+    if (input.platformSettings !== undefined) updates.platform_settings = input.platformSettings;
 
     const { data, error } = await admin
       .from('posts')
@@ -225,6 +227,7 @@ export class SupabaseDraftPostRepository implements IDraftPostRepository {
       mediaPaths: (row.media_urls as string[]) || [],
       mediaUrls: [], // signed URLs populated by caller via resolveMediaUrls
       status: row.status as DraftPostOutput['status'],
+      platformSettings: (row.platform_settings as DraftPostOutput['platformSettings']) || {},
       scheduledAt: (row.scheduled_at as string) || null,
       publishedAt: (row.published_at as string) || null,
       createdAt: row.created_at as string,
@@ -233,7 +236,7 @@ export class SupabaseDraftPostRepository implements IDraftPostRepository {
   }
 
   async publish(input: PublishPostInput): Promise<PublishPostOutput> {
-    logger.info('Publish started', { postId: input.postId, userId: input.userId, privacyLevel: input.privacyLevel });
+    logger.info('Publish started', { postId: input.postId, userId: input.userId });
     const admin = this.supabase.getAdmin();
 
     // 1. Fetch the post
@@ -280,12 +283,15 @@ export class SupabaseDraftPostRepository implements IDraftPostRepository {
     const results: PublishAccountResult[] = [];
     const title = (post.content as string) || (post.name as string) || '';
     const mediaType = post.media_type as string;
+    const platformSettings = (post.platform_settings as Record<string, unknown>) || {};
+    const tiktokOpts = (platformSettings.tiktok as Record<string, unknown>) || {};
     logger.info('Publish details', {
       postId: input.postId,
       mediaType,
       mediaCount: mediaUrls.length,
       accountCount: accounts.length,
       titleLength: title.length,
+      platformSettings,
     });
 
     for (const account of accounts) {
@@ -312,22 +318,22 @@ export class SupabaseDraftPostRepository implements IDraftPostRepository {
             publishResult = await this.tiktokApi.publishVideo(accessToken, {
               title,
               videoUrl: mediaUrls[0],
-              privacyLevel: input.privacyLevel,
-              disableComment: input.disableComment,
+              privacyLevel: (tiktokOpts.privacyLevel as string) || 'SELF_ONLY',
+              disableComment: (tiktokOpts.disableComment as boolean) ?? false,
               disableDuet: false,
               disableStitch: false,
-              brandContentToggle: input.brandContentToggle,
-              brandOrganicToggle: input.brandOrganicToggle,
+              brandContentToggle: (tiktokOpts.brandContentToggle as boolean) ?? false,
+              brandOrganicToggle: (tiktokOpts.brandOrganicToggle as boolean) ?? false,
             });
           } else {
             publishResult = await this.tiktokApi.publishPhoto(accessToken, {
               title,
               photoUrls: mediaUrls,
-              privacyLevel: input.privacyLevel,
-              disableComment: input.disableComment,
-              autoAddMusic: input.autoAddMusic,
-              brandContentToggle: input.brandContentToggle,
-              brandOrganicToggle: input.brandOrganicToggle,
+              privacyLevel: (tiktokOpts.privacyLevel as string) || 'SELF_ONLY',
+              disableComment: (tiktokOpts.disableComment as boolean) ?? false,
+              autoAddMusic: (tiktokOpts.autoAddMusic as boolean) ?? true,
+              brandContentToggle: (tiktokOpts.brandContentToggle as boolean) ?? false,
+              brandOrganicToggle: (tiktokOpts.brandOrganicToggle as boolean) ?? false,
             });
           }
 

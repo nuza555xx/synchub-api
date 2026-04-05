@@ -83,6 +83,8 @@ export class DraftPostController {
       content: bodyParsed.data.content,
       socialAccountIds: bodyParsed.data.socialAccountIds,
       mediaPaths: bodyParsed.data.mediaPaths,
+      scheduledAt: bodyParsed.data.scheduledAt,
+      platformSettings: bodyParsed.data.platformSettings,
     });
 
     ctx.status = 200;
@@ -199,20 +201,10 @@ export class DraftPostController {
       throw new ValidationError(idParsed.error.errors[0].message, EC.POST400001);
     }
 
-    const bodyParsed = publishPostSchema.safeParse(ctx.request.body || {});
-    if (!bodyParsed.success) {
-      throw new ValidationError(bodyParsed.error.errors[0].message, EC.POST400001);
-    }
-
     const userId = getUserId(ctx);
     const result = await this.publishUseCase.execute({
       postId: idParsed.data.id,
       userId,
-      privacyLevel: bodyParsed.data.privacyLevel ?? "SELF_ONLY",
-      disableComment: bodyParsed.data.disableComment,
-      autoAddMusic: bodyParsed.data.autoAddMusic,
-      brandContentToggle: bodyParsed.data.brandContentToggle,
-      brandOrganicToggle: bodyParsed.data.brandOrganicToggle,
     });
 
     ctx.status = 200;

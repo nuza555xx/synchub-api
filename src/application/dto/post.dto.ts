@@ -1,4 +1,4 @@
-import type { MediaType, DraftStatus } from '@/domain/entities/post';
+import type { MediaType, DraftStatus, PlatformSettings } from '@/domain/entities/post';
 
 export interface CreateDraftInput {
   userId: string;
@@ -17,6 +17,8 @@ export interface UpdateDraftInput {
   description?: string;
   content?: string;
   mediaPaths?: string[];
+  platformSettings?: PlatformSettings;
+  scheduledAt?: string | null;
 }
 
 export interface UploadMediaInput {
@@ -39,6 +41,7 @@ export interface DraftPostOutput {
   mediaPaths: string[];
   mediaUrls: string[];
   status: DraftStatus;
+  platformSettings: PlatformSettings;
   scheduledAt: string | null;
   publishedAt: string | null;
   createdAt: string;
@@ -58,11 +61,6 @@ export interface DeleteMediaInput {
 export interface PublishPostInput {
   postId: string;
   userId: string;
-  privacyLevel?: string;
-  disableComment?: boolean;
-  autoAddMusic?: boolean;
-  brandContentToggle?: boolean;
-  brandOrganicToggle?: boolean;
 }
 
 export interface PublishPostOutput {
