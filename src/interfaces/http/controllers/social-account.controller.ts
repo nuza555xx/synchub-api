@@ -63,8 +63,7 @@ export class SocialAccountController {
 
     const userId = getUserId(ctx);
     const scopes = Array.isArray(ctx.request.body.scopes) ? ctx.request.body.scopes.filter((s: unknown): s is string => typeof s === 'string') : [];
-    const result = await this.connectUseCase.execute({
-      userId,
+    const result = await this.connectUseCase.execute(userId, {
       platform: parsed.data.platform,
       redirectUri: '',
       scopes,
@@ -145,9 +144,8 @@ export class SocialAccountController {
     }
 
     const userId = getUserId(ctx);
-    const result = await this.refreshTokenUseCase.execute({
+    const result = await this.refreshTokenUseCase.execute(userId, {
       socialAccountId: parsed.data.id,
-      userId,
     });
     ctx.status = 200;
     ctx.body = {
@@ -164,9 +162,8 @@ export class SocialAccountController {
     }
 
     const userId = getUserId(ctx);
-    await this.disconnectUseCase.execute({
+    await this.disconnectUseCase.execute(userId, {
       socialAccountId: parsed.data.id,
-      userId,
     });
     ctx.status = 200;
     ctx.body = {

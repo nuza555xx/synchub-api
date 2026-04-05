@@ -46,8 +46,7 @@ export class DraftPostController {
     }
 
     const userId = getUserId(ctx);
-    const result = await this.createUseCase.execute({
-      userId,
+    const result = await this.createUseCase.execute(userId, {
       name: parsed.data.name,
       description: parsed.data.description,
       content: parsed.data.content,
@@ -75,9 +74,8 @@ export class DraftPostController {
     }
 
     const userId = getUserId(ctx);
-    const result = await this.updateUseCase.execute({
+    const result = await this.updateUseCase.execute(userId, {
       id: idParsed.data.id,
-      userId,
       name: bodyParsed.data.name,
       description: bodyParsed.data.description,
       content: bodyParsed.data.content,
@@ -152,9 +150,8 @@ export class DraftPostController {
     }
 
     const userId = getUserId(ctx);
-    const result = await this.uploadMediaUseCase.execute({
+    const result = await this.uploadMediaUseCase.execute(userId, {
       draftId: parsed.data.id,
-      userId,
       file: {
         buffer: file.buffer,
         mimetype: file.mimetype,
@@ -182,9 +179,8 @@ export class DraftPostController {
     }
 
     const userId = getUserId(ctx);
-    await this.deleteMediaUseCase.execute({
+    await this.deleteMediaUseCase.execute(userId, {
       draftId: idParsed.data.id,
-      userId,
       mediaPath: bodyParsed.data.mediaPath,
     });
 
@@ -202,9 +198,8 @@ export class DraftPostController {
     }
 
     const userId = getUserId(ctx);
-    const result = await this.publishUseCase.execute({
+    const result = await this.publishUseCase.execute(userId, {
       postId: idParsed.data.id,
-      userId,
     });
 
     ctx.status = 200;

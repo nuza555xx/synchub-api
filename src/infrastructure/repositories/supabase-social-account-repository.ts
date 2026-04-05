@@ -102,7 +102,7 @@ export class SupabaseSocialAccountRepository implements ISocialAccountRepository
     };
   }
 
-  async connect(input: ConnectSocialInput): Promise<ConnectSocialOutput> {
+  async connect(userId: string, input: ConnectSocialInput): Promise<ConnectSocialOutput> {
     const admin = this.supabase.getAdmin();
     let state: string;
     let authUrl: string;
@@ -125,7 +125,7 @@ export class SupabaseSocialAccountRepository implements ISocialAccountRepository
 
     await admin.from('social_oauth_states').insert({
       state,
-      user_id: input.userId,
+      user_id: userId,
       platform: input.platform,
       code_verifier: codeVerifier || null,
       created_at: new Date().toISOString(),
@@ -241,8 +241,7 @@ export class SupabaseSocialAccountRepository implements ISocialAccountRepository
       const isReconnect = !!existing;
       logger.info(`${input.platform} connected`, { userId, platform: input.platform, accountId: userInfo.accountId });
 
-      await this.activityLog.create({
-        userId,
+      await this.activityLog.create(userId, {
         action: isReconnect ? 'social_account.reconnect' : 'social_account.connect',
         resourceType: 'social_account',
         resourceId: accountId,
@@ -253,7 +252,7 @@ export class SupabaseSocialAccountRepository implements ISocialAccountRepository
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Connection failed';
       logger.error('Callback failed', { userId, platform: input.platform, error: errorMessage });
-      await this.activityLog.create({ userId, action: 'social_account.connect_failed', resourceType: 'social_account', details: { platform: input.platform, error: errorMessage } });
+      await this.activityLog.create(userId, { action: 'social_account.connect_failed', resourceType: 'social_account', details: { platform: input.platform, error: errorMessage } });
       throw err;
     }
   }
@@ -330,13 +329,13 @@ export class SupabaseSocialAccountRepository implements ISocialAccountRepository
     };
   }
 
-  async refreshToken(input: RefreshSocialTokenInput): Promise<RefreshSocialTokenOutput> {
+  async refreshToken(userId: string, input: RefreshSocialTokenInput): Promise<RefreshSocialTokenOutput> {
     const admin = this.supabase.getAdmin();
     const { data: row, error } = await admin
       .from('social_accounts')
       .select('*')
       .eq('id', input.socialAccountId)
-      .eq('user_id', input.userId)
+      .eq('user_id', userId)
       .single();
 
     if (error || !row) throw new NotFoundError('Social account not found');
@@ -380,13 +379,13 @@ export class SupabaseSocialAccountRepository implements ISocialAccountRepository
     throw new AppError(EC.SOCIAL400005, `Platform "${row.platform}" refresh is not yet supported`, 400);
   }
 
-  async disconnect(input: DisconnectSocialInput): Promise<void> {
+  async disconnect(userId: string, input: DisconnectSocialInput): Promise<void> {
     const admin = this.supabase.getAdmin();
-    const { data: row, error: findError } = await admin.from('social_accounts').select('id, platform').eq('id', input.socialAccountId).eq('user_id', input.userId).single();
+    const { data: row, error: findError } = await admin.from('social_accounts').select('id, platform').eq('id', input.socialAccountId).eq('user_id', userId).single();
     if (findError || !row) throw new NotFoundError('Social account not found');
     await admin.from('social_accounts').delete().eq('id', input.socialAccountId);
-    logger.info('Social account disconnected', { userId: input.userId, socialAccountId: input.socialAccountId, platform: row.platform });
-    await this.activityLog.create({ userId: input.userId, action: 'social_account.disconnect', resourceType: 'social_account', resourceId: input.socialAccountId, details: { platform: row.platform } });
+    logger.info('Social account disconnected', { userId, socialAccountId: input.socialAccountId, platform: row.platform });
+    await this.activityLog.create(userId, { action: 'social_account.disconnect', resourceType: 'social_account', resourceId: input.socialAccountId, details: { platform: row.platform } });
   }
 
   async handleOAuthError(input: OAuthErrorInput): Promise<void> {
@@ -394,7 +393,7 @@ export class SupabaseSocialAccountRepository implements ISocialAccountRepository
     const { data: stateRow } = await admin.from('social_oauth_states').select('user_id').eq('state', input.state).single();
     if (stateRow) await admin.from('social_oauth_states').delete().eq('state', input.state);
     const userId = stateRow?.user_id;
-    if (userId) await this.activityLog.create({ userId, action: 'social_account.connect_failed', resourceType: 'social_account', details: { platform: input.platform, error: input.error, errorDescription: input.errorDescription } });
+    if (userId) await this.activityLog.create(userId, { action: 'social_account.connect_failed', resourceType: 'social_account', details: { platform: input.platform, error: input.error, errorDescription: input.errorDescription } });
   }
 
   private computeTokenStatus(tokenExpiresAt: string | null): TokenStatus {

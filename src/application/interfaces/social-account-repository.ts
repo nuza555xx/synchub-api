@@ -14,9 +14,9 @@ import {
 export interface ISocialAccountRepository {
   listByUser(userId: string): Promise<SocialAccountOutput[]>;
   getHealth(socialAccountId: string, userId: string): Promise<SocialAccountHealthOutput>;
-  connect(input: ConnectSocialInput): Promise<ConnectSocialOutput>;
+  connect(userId: string, input: ConnectSocialInput): Promise<ConnectSocialOutput>;
   handleCallback(input: SocialCallbackInput): Promise<SocialCallbackOutput>;
-  refreshToken(input: RefreshSocialTokenInput): Promise<RefreshSocialTokenOutput>;
-  disconnect(input: DisconnectSocialInput): Promise<void>;
+  refreshToken(userId: string, input: RefreshSocialTokenInput): Promise<RefreshSocialTokenOutput>;
+  disconnect(userId: string, input: DisconnectSocialInput): Promise<void>;
   handleOAuthError(input: OAuthErrorInput): Promise<void>;
 }

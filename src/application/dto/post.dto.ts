@@ -1,7 +1,6 @@
 import type { MediaType, DraftStatus, PlatformSettings } from '@/domain/entities/post';
 
 export interface CreateDraftInput {
-  userId: string;
   socialAccountIds?: string[];
   name?: string;
   description?: string;
@@ -11,7 +10,6 @@ export interface CreateDraftInput {
 
 export interface UpdateDraftInput {
   id: string;
-  userId: string;
   socialAccountIds?: string[];
   name?: string;
   description?: string;
@@ -23,7 +21,6 @@ export interface UpdateDraftInput {
 
 export interface UploadMediaInput {
   draftId: string;
-  userId: string;
   file: {
     buffer: Buffer;
     mimetype: string;
@@ -54,13 +51,11 @@ export interface UploadMediaOutput {
 
 export interface DeleteMediaInput {
   draftId: string;
-  userId: string;
   mediaPath: string;
 }
 
 export interface PublishPostInput {
   postId: string;
-  userId: string;
 }
 
 export interface PublishPostOutput {

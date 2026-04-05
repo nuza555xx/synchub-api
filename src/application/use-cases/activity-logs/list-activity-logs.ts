@@ -4,7 +4,7 @@ import { ListActivityLogsInput, ActivityLogListOutput } from '@/application/dto/
 export class ListActivityLogsUseCase {
   constructor(private readonly repo: IActivityLogRepository) {}
 
-  async execute(input: ListActivityLogsInput): Promise<ActivityLogListOutput> {
-    return this.repo.list(input);
+  async execute(userId: string, input: ListActivityLogsInput): Promise<ActivityLogListOutput> {
+    return this.repo.list(userId, input);
   }
 }

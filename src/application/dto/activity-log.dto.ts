@@ -23,14 +23,12 @@ export interface ActivityLogListOutput {
 }
 
 export interface ListActivityLogsInput {
-  userId: string;
   page?: number;
   limit?: number;
   action?: string;
 }
 
 export interface CreateActivityLogInput {
-  userId: string;
   action: string;
   resourceType: string;
   resourceId?: string;

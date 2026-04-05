@@ -25,12 +25,12 @@ export class SupabaseDraftPostRepository implements IDraftPostRepository {
     private readonly tiktokApi: TikTokApiClient,
   ) {}
 
-  async create(input: CreateDraftInput): Promise<DraftPostOutput> {
+  async create(userId: string, input: CreateDraftInput): Promise<DraftPostOutput> {
     const admin = this.supabase.getAdmin();
     const { data, error } = await admin
       .from('posts')
       .insert({
-        user_id: input.userId,
+        user_id: userId,
         social_account_ids: input.socialAccountIds || [],
         name: input.name || '',
         description: input.description || '',
@@ -49,7 +49,7 @@ export class SupabaseDraftPostRepository implements IDraftPostRepository {
     return output;
   }
 
-  async update(input: UpdateDraftInput): Promise<DraftPostOutput> {
+  async update(userId: string, input: UpdateDraftInput): Promise<DraftPostOutput> {
     const admin = this.supabase.getAdmin();
 
     const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
@@ -65,7 +65,7 @@ export class SupabaseDraftPostRepository implements IDraftPostRepository {
       .from('posts')
       .update(updates)
       .eq('id', input.id)
-      .eq('user_id', input.userId)
+      .eq('user_id', userId)
       .select('*')
       .single();
 
@@ -141,7 +141,7 @@ export class SupabaseDraftPostRepository implements IDraftPostRepository {
     }
   }
 
-  async uploadMedia(input: UploadMediaInput): Promise<UploadMediaOutput> {
+  async uploadMedia(userId: string, input: UploadMediaInput): Promise<UploadMediaOutput> {
     const admin = this.supabase.getAdmin();
 
     // Verify draft exists and belongs to user
@@ -149,7 +149,7 @@ export class SupabaseDraftPostRepository implements IDraftPostRepository {
       .from('posts')
       .select('id, media_urls')
       .eq('id', input.draftId)
-      .eq('user_id', input.userId)
+      .eq('user_id', userId)
       .single();
 
     if (draftError || !draft) {
@@ -157,7 +157,7 @@ export class SupabaseDraftPostRepository implements IDraftPostRepository {
     }
 
     const ext = path.extname(input.file.originalname) || '.jpg';
-    const storagePath = `${input.userId}/${input.draftId}/${randomUUID()}${ext}`;
+    const storagePath = `${userId}/${input.draftId}/${randomUUID()}${ext}`;
 
     const { error: uploadError } = await admin.storage
       .from('media')
@@ -180,7 +180,7 @@ export class SupabaseDraftPostRepository implements IDraftPostRepository {
     return { path: storagePath };
   }
 
-  async deleteMedia(input: DeleteMediaInput): Promise<void> {
+  async deleteMedia(userId: string, input: DeleteMediaInput): Promise<void> {
     const admin = this.supabase.getAdmin();
 
     // Verify draft exists and belongs to user
@@ -188,7 +188,7 @@ export class SupabaseDraftPostRepository implements IDraftPostRepository {
       .from('posts')
       .select('id, media_urls')
       .eq('id', input.draftId)
-      .eq('user_id', input.userId)
+      .eq('user_id', userId)
       .single();
 
     if (draftError || !draft) {
@@ -235,8 +235,8 @@ export class SupabaseDraftPostRepository implements IDraftPostRepository {
     };
   }
 
-  async publish(input: PublishPostInput): Promise<PublishPostOutput> {
-    logger.info('Publish started', { postId: input.postId, userId: input.userId });
+  async publish(userId: string, input: PublishPostInput): Promise<PublishPostOutput> {
+    logger.info('Publish started', { postId: input.postId, userId });
     const admin = this.supabase.getAdmin();
 
     // 1. Fetch the post
@@ -244,7 +244,7 @@ export class SupabaseDraftPostRepository implements IDraftPostRepository {
       .from('posts')
       .select('*')
       .eq('id', input.postId)
-      .eq('user_id', input.userId)
+      .eq('user_id', userId)
       .single();
 
     if (postError || !post) {
@@ -272,10 +272,10 @@ export class SupabaseDraftPostRepository implements IDraftPostRepository {
       .from('social_accounts')
       .select('id, platform, access_token, token_expires_at, access_token_expires_at')
       .in('id', socialAccountIds)
-      .eq('user_id', input.userId);
+      .eq('user_id', userId);
 
     if (accError || !accounts || accounts.length === 0) {
-      logger.error('No valid social accounts found', { accError, socialAccountIds, userId: input.userId });
+      logger.error('No valid social accounts found', { accError, socialAccountIds, userId });
       throw new AppError(EC.POST400004, 'No valid social accounts found', 400);
     }
 

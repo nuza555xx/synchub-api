@@ -13,7 +13,7 @@ export class ActivityLogController {
     const limit = ctx.query.limit ? Number(ctx.query.limit) : undefined;
     const action = ctx.query.action;
 
-    const result = await this.listUseCase.execute({ userId, page, limit, action });
+    const result = await this.listUseCase.execute(userId, { page, limit, action });
     ctx.status = 200;
     ctx.body = {
       code: 'LOG200001',

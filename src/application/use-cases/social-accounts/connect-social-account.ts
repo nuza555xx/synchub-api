@@ -4,7 +4,7 @@ import { ConnectSocialInput, ConnectSocialOutput } from '@/application/dto/socia
 export class ConnectSocialAccountUseCase {
   constructor(private readonly repo: ISocialAccountRepository) {}
 
-  async execute(input: ConnectSocialInput): Promise<ConnectSocialOutput> {
-    return this.repo.connect(input);
+  async execute(userId: string, input: ConnectSocialInput): Promise<ConnectSocialOutput> {
+    return this.repo.connect(userId, input);
   }
 }

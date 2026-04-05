@@ -1,7 +1,6 @@
 import { SocialPlatform, TokenStatus } from '@/domain/entities/social-account';
 
 export interface ConnectSocialInput {
-  userId: string;
   platform: SocialPlatform;
   redirectUri: string;
   scopes: string[];
@@ -48,7 +47,6 @@ export interface SocialAccountHealthOutput {
 
 export interface RefreshSocialTokenInput {
   socialAccountId: string;
-  userId: string;
 }
 
 export interface RefreshSocialTokenOutput {
@@ -58,7 +56,6 @@ export interface RefreshSocialTokenOutput {
 
 export interface DisconnectSocialInput {
   socialAccountId: string;
-  userId: string;
 }
 
 export interface OAuthErrorInput {
