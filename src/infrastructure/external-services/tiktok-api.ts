@@ -14,6 +14,7 @@ const TIKTOK_PUBLISH_STATUS_URL =
   "https://open.tiktokapis.com/v2/post/publish/status/fetch/";
 const TIKTOK_PUBLISH_PHOTO_URL =
   "https://open.tiktokapis.com/v2/post/publish/content/init/";
+const TIKTOK_REVOKE_URL = "https://open.tiktokapis.com/v2/oauth/revoke/";
 
 export interface TikTokTokenResponse {
   access_token: string;
@@ -505,6 +506,24 @@ export class TikTokApiClient {
         "Failed to check TikTok publish status",
         400,
       );
+    }
+  }
+
+  async revokeToken(accessToken: string): Promise<void> {
+    try {
+      await axios.post(
+        TIKTOK_REVOKE_URL,
+        new URLSearchParams({
+          client_key: this.clientKey,
+          client_secret: this.clientSecret,
+          token: accessToken,
+        }).toString(),
+        { headers: { "Content-Type": "application/x-www-form-urlencoded" } },
+      );
+      logger.info("TikTok token revoked successfully");
+    } catch (error) {
+      const errData = axios.isAxiosError(error) ? error.response?.data : undefined;
+      logger.warn("TikTok token revocation failed (non-blocking)", { error: errData ?? error });
     }
   }
 

@@ -197,6 +197,18 @@ export class FacebookApiClient {
     }
   }
 
+  async revokeToken(accessToken: string): Promise<void> {
+    try {
+      await axios.delete(
+        `https://graph.facebook.com/${FB_GRAPH_VERSION}/me/permissions`,
+        { params: { access_token: accessToken } },
+      );
+      logger.info("Facebook token revoked successfully");
+    } catch (error) {
+      logger.warn("Facebook token revocation failed (non-blocking)", { error });
+    }
+  }
+
   generateState(): string {
     return randomBytes(16).toString("hex");
   }

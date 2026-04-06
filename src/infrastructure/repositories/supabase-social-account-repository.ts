@@ -381,11 +381,28 @@ export class SupabaseSocialAccountRepository implements ISocialAccountRepository
 
   async disconnect(userId: string, input: DisconnectSocialInput): Promise<void> {
     const admin = this.supabase.getAdmin();
-    const { data: row, error: findError } = await admin.from('social_accounts').select('id, platform').eq('id', input.socialAccountId).eq('user_id', userId).single();
+    const { data: row, error: findError } = await admin.from('social_accounts').select('id, platform, access_token').eq('id', input.socialAccountId).eq('user_id', userId).single();
     if (findError || !row) throw new NotFoundError('Social account not found');
+
+    // Revoke token with the platform before deleting (non-blocking)
+    if (row.access_token) {
+      try {
+        const plainToken = decryptToken(row.access_token);
+        if (row.platform === 'tiktok') {
+          await this.tiktokApi.revokeToken(plainToken);
+        } else if (row.platform === 'facebook') {
+          await this.facebookApi.revokeToken(plainToken);
+        } else if (row.platform === 'twitter') {
+          await this.xApi.revokeToken(plainToken);
+        }
+      } catch (err) {
+        logger.warn('Token revocation failed during disconnect (proceeding with deletion)', { platform: row.platform, error: err });
+      }
+    }
+
     await admin.from('social_accounts').delete().eq('id', input.socialAccountId);
     logger.info('Social account disconnected', { userId, socialAccountId: input.socialAccountId, platform: row.platform });
-    await this.activityLog.create(userId, { action: 'social_account.disconnect', resourceType: 'social_account', resourceId: input.socialAccountId, details: { platform: row.platform } });
+    await this.activityLog.create(userId, { action: 'social_account.disconnect', resourceType: 'social_account', resourceId: input.socialAccountId, details: { platform: row.platform, tokenRevoked: true } });
   }
 
   async handleOAuthError(input: OAuthErrorInput): Promise<void> {

@@ -146,6 +146,25 @@ export class XApiClient {
     }
   }
 
+  async revokeToken(accessToken: string): Promise<void> {
+    try {
+      const basicAuth = Buffer.from(`${this.clientId}:${this.clientSecret}`).toString("base64");
+      await axios.post(
+        "https://api.twitter.com/2/oauth2/revoke",
+        new URLSearchParams({ token: accessToken, token_type_hint: "access_token" }).toString(),
+        {
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+            Authorization: `Basic ${basicAuth}`,
+          },
+        },
+      );
+      logger.info("X token revoked successfully");
+    } catch (error) {
+      logger.warn("X token revocation failed (non-blocking)", { error });
+    }
+  }
+
   generateState(): string {
     return randomBytes(16).toString("hex");
   }
