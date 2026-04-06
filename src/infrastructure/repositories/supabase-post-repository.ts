@@ -319,9 +319,6 @@ export class SupabaseDraftPostRepository implements IDraftPostRepository {
               title,
               videoUrl: mediaUrls[0],
               privacyLevel: (tiktokOpts.privacyLevel as string) || 'SELF_ONLY',
-              disableComment: (tiktokOpts.disableComment as boolean) ?? false,
-              disableDuet: false,
-              disableStitch: false,
               brandContentToggle: (tiktokOpts.brandContentToggle as boolean) ?? false,
               brandOrganicToggle: (tiktokOpts.brandOrganicToggle as boolean) ?? false,
             });
@@ -330,7 +327,6 @@ export class SupabaseDraftPostRepository implements IDraftPostRepository {
               title,
               photoUrls: mediaUrls,
               privacyLevel: (tiktokOpts.privacyLevel as string) || 'SELF_ONLY',
-              disableComment: (tiktokOpts.disableComment as boolean) ?? false,
               autoAddMusic: (tiktokOpts.autoAddMusic as boolean) ?? true,
               brandContentToggle: (tiktokOpts.brandContentToggle as boolean) ?? false,
               brandOrganicToggle: (tiktokOpts.brandOrganicToggle as boolean) ?? false,

@@ -4,7 +4,6 @@ export type DraftStatus = 'draft' | 'scheduled' | 'published' | 'failed';
 export interface PlatformSettings {
   tiktok?: {
     privacyLevel?: 'PUBLIC_TO_EVERYONE' | 'MUTUAL_FOLLOW_FRIENDS' | 'FOLLOWER_OF_CREATOR' | 'SELF_ONLY';
-    disableComment?: boolean;
     autoAddMusic?: boolean;
     brandContentToggle?: boolean;
     brandOrganicToggle?: boolean;

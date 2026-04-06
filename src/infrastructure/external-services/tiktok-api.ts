@@ -93,9 +93,6 @@ export interface TikTokDirectPostOptions {
   /** Photo URLs (required when mediaType is PHOTO, max 35 images) */
   photoUrls?: string[];
   privacyLevel?: TikTokPrivacyLevel;
-  disableComment?: boolean;
-  disableDuet?: boolean;
-  disableStitch?: boolean;
   autoAddMusic?: boolean;
   brandContentToggle?: boolean;
   brandOrganicToggle?: boolean;
@@ -113,8 +110,6 @@ interface TikTokPostInfoBase {
 
 interface TikTokVideoPostInfo extends TikTokPostInfoBase {
   title: string;
-  disable_duet: boolean;
-  disable_stitch: boolean;
 }
 
 interface TikTokPhotoPostInfo extends TikTokPostInfoBase {
@@ -296,9 +291,6 @@ export class TikTokApiClient {
       title: string;
       videoUrl: string;
       privacyLevel?: string;
-      disableComment?: boolean;
-      disableDuet?: boolean;
-      disableStitch?: boolean;
       brandContentToggle?: boolean;
       brandOrganicToggle?: boolean;
     },
@@ -313,9 +305,6 @@ export class TikTokApiClient {
       title: options.title,
       videoUrl: options.videoUrl,
       privacyLevel: (options.privacyLevel as TikTokPrivacyLevel) || "SELF_ONLY",
-      disableComment: options.disableComment,
-      disableDuet: options.disableDuet,
-      disableStitch: options.disableStitch,
       brandContentToggle: options.brandContentToggle,
       brandOrganicToggle: options.brandOrganicToggle,
     });
@@ -327,7 +316,6 @@ export class TikTokApiClient {
       title: string;
       photoUrls: string[];
       privacyLevel?: string;
-      disableComment?: boolean;
       autoAddMusic?: boolean;
       brandContentToggle?: boolean;
       brandOrganicToggle?: boolean;
@@ -343,7 +331,6 @@ export class TikTokApiClient {
       title: options.title,
       photoUrls: options.photoUrls,
       privacyLevel: (options.privacyLevel as TikTokPrivacyLevel) || "SELF_ONLY",
-      disableComment: options.disableComment,
       autoAddMusic: options.autoAddMusic,
       brandContentToggle: options.brandContentToggle,
       brandOrganicToggle: options.brandOrganicToggle,
@@ -375,9 +362,7 @@ export class TikTokApiClient {
         post_info: {
           title: options.title.slice(0, 2200),
           privacy_level: options.privacyLevel || "SELF_ONLY",
-          disable_comment: options.disableComment ?? false,
-          disable_duet: options.disableDuet ?? false,
-          disable_stitch: options.disableStitch ?? false,
+          disable_comment: false,
           brand_content_toggle: options.brandContentToggle ?? false,
           brand_organic_toggle: options.brandOrganicToggle ?? false,
         },
@@ -399,7 +384,7 @@ export class TikTokApiClient {
           title: options.title.slice(0, 90),
           description: options.title.slice(0, 2200),
           privacy_level: options.privacyLevel || "SELF_ONLY",
-          disable_comment: options.disableComment ?? false,
+          disable_comment: false,
           brand_content_toggle: options.brandContentToggle ?? false,
           brand_organic_toggle: options.brandOrganicToggle ?? false,
         },
