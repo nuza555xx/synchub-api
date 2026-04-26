@@ -1,5 +1,7 @@
 import 'koa';
 import type { Context } from 'koa';
+import type { OrganizationMember, OrgRole } from '@/domain/entities/organization';
+import type { Plan } from '@/domain/entities/plan';
 
 declare module 'koa' {
   interface Request {
@@ -10,6 +12,9 @@ declare module 'koa' {
 export interface AuthState {
   user: { id: string };
   accessToken: string;
+  organizationId?: string;
+  membership?: OrganizationMember;
+  plan?: Plan;
 }
 
 export type TypedContext<

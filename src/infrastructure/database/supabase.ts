@@ -24,4 +24,14 @@ export class SupabaseClientFactory {
     }
     return this.adminClient;
   }
+
+  /** Alias for getAdmin() — service role client that bypasses RLS */
+  createServiceClient(): SupabaseClient {
+    return this.getAdmin();
+  }
+
+  /** Alias for getAdmin() — used when calling auth.admin methods */
+  createAdminClient(): SupabaseClient {
+    return this.getAdmin();
+  }
 }

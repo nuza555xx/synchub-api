@@ -20,6 +20,7 @@ create index if not exists idx_draft_posts_status on public.draft_posts(user_id,
 -- RLS
 alter table public.draft_posts enable row level security;
 
+drop policy if exists "Users can manage own drafts" on public.draft_posts;
 create policy "Users can manage own drafts"
   on public.draft_posts
   for all
@@ -38,6 +39,7 @@ values (
 on conflict (id) do nothing;
 
 -- Storage policy: users can upload to their own folder
+drop policy if exists "Users can upload own media" on storage.objects;
 create policy "Users can upload own media"
   on storage.objects
   for insert
@@ -47,12 +49,14 @@ create policy "Users can upload own media"
   );
 
 -- Storage policy: public read
+drop policy if exists "Public media read" on storage.objects;
 create policy "Public media read"
   on storage.objects
   for select
   using (bucket_id = 'media');
 
 -- Storage policy: users can delete own media
+drop policy if exists "Users can delete own media" on storage.objects;
 create policy "Users can delete own media"
   on storage.objects
   for delete

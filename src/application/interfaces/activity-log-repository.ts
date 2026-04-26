@@ -5,6 +5,6 @@ import {
 } from '@/application/dto/activity-log.dto';
 
 export interface IActivityLogRepository {
-  list(userId: string, input: ListActivityLogsInput): Promise<ActivityLogListOutput>;
-  create(userId: string, input: CreateActivityLogInput): Promise<void>;
+  list(orgId: string, input: ListActivityLogsInput): Promise<ActivityLogListOutput>;
+  create(orgId: string, input: CreateActivityLogInput): Promise<void>;
 }

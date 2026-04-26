@@ -4,7 +4,7 @@ import { RefreshSocialTokenInput, RefreshSocialTokenOutput } from '@/application
 export class RefreshSocialTokenUseCase {
   constructor(private readonly repo: ISocialAccountRepository) {}
 
-  async execute(userId: string, input: RefreshSocialTokenInput): Promise<RefreshSocialTokenOutput> {
-    return this.repo.refreshToken(userId, input);
+  async execute(orgId: string, input: RefreshSocialTokenInput): Promise<RefreshSocialTokenOutput> {
+    return this.repo.refreshToken(orgId, input);
   }
 }

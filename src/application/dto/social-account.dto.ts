@@ -4,6 +4,7 @@ export interface ConnectSocialInput {
   platform: SocialPlatform;
   redirectUri: string;
   scopes: string[];
+  organizationId?: string;
 }
 
 export interface ConnectSocialOutput {

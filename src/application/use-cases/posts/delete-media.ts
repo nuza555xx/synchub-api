@@ -4,7 +4,7 @@ import { DeleteMediaInput } from '@/application/dto/post.dto';
 export class DeleteDraftMediaUseCase {
   constructor(private readonly repo: IDraftPostRepository) {}
 
-  async execute(userId: string, input: DeleteMediaInput): Promise<void> {
-    return this.repo.deleteMedia(userId, input);
+  async execute(orgId: string, input: DeleteMediaInput): Promise<void> {
+    return this.repo.deleteMedia(orgId, input);
   }
 }

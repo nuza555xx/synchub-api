@@ -26,4 +26,8 @@ export const env = {
     clientSecret: process.env.X_CLIENT_SECRET || '',
     redirectUri: process.env.X_REDIRECT_URI || '',
   },
+  omise: {
+    secretKey: process.env.OMISE_SECRET_KEY || '',
+    publicKey: process.env.OMISE_PUBLIC_KEY || '',
+  },
 };

@@ -10,12 +10,12 @@ import {
 } from '@/application/dto/post.dto';
 
 export interface IDraftPostRepository {
-  create(userId: string, input: CreateDraftInput): Promise<DraftPostOutput>;
-  update(userId: string, input: UpdateDraftInput): Promise<DraftPostOutput>;
-  findById(id: string, userId: string): Promise<DraftPostOutput>;
-  listByUser(userId: string): Promise<DraftPostOutput[]>;
-  delete(id: string, userId: string): Promise<void>;
-  uploadMedia(userId: string, input: UploadMediaInput): Promise<UploadMediaOutput>;
-  deleteMedia(userId: string, input: DeleteMediaInput): Promise<void>;
-  publish(userId: string, input: PublishPostInput): Promise<PublishPostOutput>;
+  create(orgId: string, userId: string, input: CreateDraftInput): Promise<DraftPostOutput>;
+  update(orgId: string, input: UpdateDraftInput): Promise<DraftPostOutput>;
+  findById(id: string, orgId: string): Promise<DraftPostOutput>;
+  listByOrganization(orgId: string): Promise<DraftPostOutput[]>;
+  delete(id: string, orgId: string): Promise<void>;
+  uploadMedia(orgId: string, input: UploadMediaInput): Promise<UploadMediaOutput>;
+  deleteMedia(orgId: string, input: DeleteMediaInput): Promise<void>;
+  publish(orgId: string, input: PublishPostInput): Promise<PublishPostOutput>;
 }

@@ -46,43 +46,52 @@ alter table public.social_accounts enable row level security;
 alter table public.social_oauth_states enable row level security;
 
 -- Users can read their own social accounts
+drop policy if exists "Users can view own social accounts" on public.social_accounts;
 create policy "Users can view own social accounts"
   on public.social_accounts for select
   using (auth.uid() = user_id);
 
 -- Users can insert their own social accounts
+drop policy if exists "Users can insert own social accounts" on public.social_accounts;
 create policy "Users can insert own social accounts"
   on public.social_accounts for insert
   with check (auth.uid() = user_id);
 
 -- Users can update their own social accounts
+drop policy if exists "Users can update own social accounts" on public.social_accounts;
 create policy "Users can update own social accounts"
   on public.social_accounts for update
   using (auth.uid() = user_id);
 
 -- Users can delete their own social accounts
+drop policy if exists "Users can delete own social accounts" on public.social_accounts;
 create policy "Users can delete own social accounts"
   on public.social_accounts for delete
   using (auth.uid() = user_id);
 
 -- Users can manage their own oauth states
+drop policy if exists "Users can view own oauth states" on public.social_oauth_states;
 create policy "Users can view own oauth states"
   on public.social_oauth_states for select
   using (auth.uid() = user_id);
 
+drop policy if exists "Users can insert own oauth states" on public.social_oauth_states;
 create policy "Users can insert own oauth states"
   on public.social_oauth_states for insert
   with check (auth.uid() = user_id);
 
+drop policy if exists "Users can delete own oauth states" on public.social_oauth_states;
 create policy "Users can delete own oauth states"
   on public.social_oauth_states for delete
   using (auth.uid() = user_id);
 
 -- Service role bypass (for server-side operations)
+drop policy if exists "Service role full access social_accounts" on public.social_accounts;
 create policy "Service role full access social_accounts"
   on public.social_accounts for all
   using (auth.role() = 'service_role');
 
+drop policy if exists "Service role full access social_oauth_states" on public.social_oauth_states;
 create policy "Service role full access social_oauth_states"
   on public.social_oauth_states for all
   using (auth.role() = 'service_role');

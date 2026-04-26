@@ -1,5 +1,5 @@
 import type { ListSocialAccountsCtx, GetHealthCtx, ConnectCtx, SocialCallbackCtx, RefreshTokenCtx, DisconnectCtx } from './types';
-import { getUserId } from '@/types/context';
+import { getUserId, getOrganizationId } from '@/types/context';
 import { ListSocialAccountsUseCase } from '@/application/use-cases/social-accounts/list-social-accounts';
 import { GetSocialAccountHealthUseCase } from '@/application/use-cases/social-accounts/get-social-account-health';
 import { ConnectSocialAccountUseCase } from '@/application/use-cases/social-accounts/connect-social-account';
@@ -29,8 +29,8 @@ export class SocialAccountController {
   ) {}
 
   list = async (ctx: ListSocialAccountsCtx): Promise<void> => {
-    const userId = getUserId(ctx);
-    const result = await this.listUseCase.execute(userId);
+    const orgId = getOrganizationId(ctx);
+    const result = await this.listUseCase.execute(orgId);
     ctx.status = 200;
     ctx.body = {
       code: 'SOCIAL200001',
@@ -46,7 +46,8 @@ export class SocialAccountController {
     }
 
     const userId = getUserId(ctx);
-    const result = await this.healthUseCase.execute(parsed.data.id, userId);
+    const orgId = getOrganizationId(ctx);
+    const result = await this.healthUseCase.execute(parsed.data.id, orgId);
     ctx.status = 200;
     ctx.body = {
       code: 'SOCIAL200002',
@@ -62,11 +63,13 @@ export class SocialAccountController {
     }
 
     const userId = getUserId(ctx);
+    const orgId = getOrganizationId(ctx);
     const scopes = Array.isArray(ctx.request.body.scopes) ? ctx.request.body.scopes.filter((s: unknown): s is string => typeof s === 'string') : [];
     const result = await this.connectUseCase.execute(userId, {
       platform: parsed.data.platform,
       redirectUri: '',
       scopes,
+      organizationId: orgId,
     });
     ctx.status = 200;
     ctx.body = {
@@ -144,7 +147,8 @@ export class SocialAccountController {
     }
 
     const userId = getUserId(ctx);
-    const result = await this.refreshTokenUseCase.execute(userId, {
+    const orgId = getOrganizationId(ctx);
+    const result = await this.refreshTokenUseCase.execute(orgId, {
       socialAccountId: parsed.data.id,
     });
     ctx.status = 200;
@@ -162,7 +166,8 @@ export class SocialAccountController {
     }
 
     const userId = getUserId(ctx);
-    await this.disconnectUseCase.execute(userId, {
+    const orgId = getOrganizationId(ctx);
+    await this.disconnectUseCase.execute(orgId, userId, {
       socialAccountId: parsed.data.id,
     });
     ctx.status = 200;

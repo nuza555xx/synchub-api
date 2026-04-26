@@ -48,6 +48,30 @@ import { FacebookApiClient } from './infrastructure/external-services/facebook-a
 import { XApiClient } from './infrastructure/external-services/x-api';
 import { logger } from './infrastructure/logger';
 import { PublishPostUseCase } from './application/use-cases/posts/publish-post';
+import { SupabaseOrganizationRepository } from './infrastructure/repositories/supabase-organization-repository';
+import { SupabasePlanRepository } from './infrastructure/repositories/supabase-plan-repository';
+import { createOrgResolver } from './interfaces/http/middleware/org-resolver';
+import { OrganizationController } from './interfaces/http/controllers/organization.controller';
+import { PlanController } from './interfaces/http/controllers/plan.controller';
+import { createOrganizationRouter } from './interfaces/http/routes/organization.routes';
+import { createPlanRouter } from './interfaces/http/routes/plan.routes';
+import { CreateOrganizationUseCase } from './application/use-cases/organizations/create-organization';
+import { ListOrganizationsUseCase } from './application/use-cases/organizations/list-organizations';
+import { UpdateOrganizationUseCase } from './application/use-cases/organizations/update-organization';
+import { DeleteOrganizationUseCase } from './application/use-cases/organizations/delete-organization';
+import { ListMembersUseCase } from './application/use-cases/organizations/list-members';
+import { InviteMemberUseCase } from './application/use-cases/organizations/invite-member';
+import { ChangeMemberRoleUseCase } from './application/use-cases/organizations/change-member-role';
+import { RemoveMemberUseCase } from './application/use-cases/organizations/remove-member';
+import { ListPlansUseCase } from './application/use-cases/plans/list-plans';
+import { SupabaseSubscriptionRepository } from './infrastructure/repositories/supabase-subscription-repository';
+import { OmisePaymentGateway } from './infrastructure/external-services/omise-payment';
+import { PaymentController } from './interfaces/http/controllers/payment.controller';
+import { createPaymentRouter } from './interfaces/http/routes/payment.routes';
+import { SubscribeUseCase } from './application/use-cases/payments/create-checkout';
+import { CancelSubscriptionUseCase } from './application/use-cases/payments/create-customer-portal';
+import { GetSubscriptionUseCase } from './application/use-cases/payments/get-subscription';
+import { HandleOmiseWebhookUseCase } from './application/use-cases/payments/handle-omise-webhook';
 
 const app = new Koa();
 
@@ -99,6 +123,38 @@ const draftPostController = new DraftPostController(
   new PublishPostUseCase(draftPostRepo),
 );
 
+// Organization & Plan
+const planRepo = new SupabasePlanRepository(supabaseFactory);
+const orgRepo = new SupabaseOrganizationRepository(supabaseFactory, planRepo);
+const orgResolver = createOrgResolver(orgRepo, planRepo);
+
+const orgController = new OrganizationController(
+  new CreateOrganizationUseCase(orgRepo, planRepo),
+  new ListOrganizationsUseCase(orgRepo),
+  new UpdateOrganizationUseCase(orgRepo),
+  new DeleteOrganizationUseCase(orgRepo),
+  new ListMembersUseCase(orgRepo),
+  new InviteMemberUseCase(orgRepo, planRepo),
+  new ChangeMemberRoleUseCase(orgRepo),
+  new RemoveMemberUseCase(orgRepo),
+);
+
+const planController = new PlanController(
+  new ListPlansUseCase(planRepo),
+);
+
+// Payment (Omise)
+const subRepo = new SupabaseSubscriptionRepository(supabaseFactory);
+const omiseGateway = new OmisePaymentGateway();
+const paymentController = new PaymentController(
+  new SubscribeUseCase(subRepo, planRepo, omiseGateway),
+  new CancelSubscriptionUseCase(subRepo, planRepo, omiseGateway),
+  new GetSubscriptionUseCase(subRepo, planRepo),
+  new HandleOmiseWebhookUseCase(subRepo, planRepo, omiseGateway),
+  omiseGateway,
+  authRepo,
+);
+
 // --- Health Check ---
 app.use(async (ctx, next) => {
   if (ctx.path === '/health' && ctx.method === 'GET') {
@@ -127,17 +183,29 @@ const authRouter = createAuthRouter(authController, authMiddleware);
 app.use(authRouter.routes());
 app.use(authRouter.allowedMethods());
 
-const socialAccountRouter = createSocialAccountRouter(socialAccountController, authMiddleware);
+const socialAccountRouter = createSocialAccountRouter(socialAccountController, authMiddleware, orgResolver);
 app.use(socialAccountRouter.routes());
 app.use(socialAccountRouter.allowedMethods());
 
-const activityLogRouter = createActivityLogRouter(activityLogController, authMiddleware);
+const activityLogRouter = createActivityLogRouter(activityLogController, authMiddleware, orgResolver);
 app.use(activityLogRouter.routes());
 app.use(activityLogRouter.allowedMethods());
 
-const draftPostRouter = createDraftPostRouter(draftPostController, authMiddleware);
+const draftPostRouter = createDraftPostRouter(draftPostController, authMiddleware, orgResolver);
 app.use(draftPostRouter.routes());
 app.use(draftPostRouter.allowedMethods());
+
+const orgRouter = createOrganizationRouter(orgController, authMiddleware, orgResolver);
+app.use(orgRouter.routes());
+app.use(orgRouter.allowedMethods());
+
+const planRouter = createPlanRouter(planController);
+app.use(planRouter.routes());
+app.use(planRouter.allowedMethods());
+
+const paymentRouter = createPaymentRouter(paymentController, authMiddleware, orgResolver);
+app.use(paymentRouter.routes());
+app.use(paymentRouter.allowedMethods());
 
 // --- Start ---
 app.listen(env.port, () => {

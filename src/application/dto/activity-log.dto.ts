@@ -29,6 +29,7 @@ export interface ListActivityLogsInput {
 }
 
 export interface CreateActivityLogInput {
+  userId: string;
   action: string;
   resourceType: string;
   resourceId?: string;

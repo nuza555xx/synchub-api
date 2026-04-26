@@ -3,7 +3,7 @@ import { IDraftPostRepository } from '@/application/interfaces/post-repository';
 export class DeleteDraftPostUseCase {
   constructor(private readonly repo: IDraftPostRepository) {}
 
-  async execute(id: string, userId: string): Promise<void> {
-    return this.repo.delete(id, userId);
+  async execute(id: string, orgId: string): Promise<void> {
+    return this.repo.delete(id, orgId);
   }
 }

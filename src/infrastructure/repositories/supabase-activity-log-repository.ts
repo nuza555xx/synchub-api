@@ -12,7 +12,7 @@ import * as EC from '@/domain/enums/error-codes';
 export class SupabaseActivityLogRepository implements IActivityLogRepository {
   constructor(private readonly supabase: SupabaseClientFactory) {}
 
-  async list(userId: string, input: ListActivityLogsInput): Promise<ActivityLogListOutput> {
+  async list(orgId: string, input: ListActivityLogsInput): Promise<ActivityLogListOutput> {
     const admin = this.supabase.getAdmin();
     const page = input.page || 1;
     const limit = Math.min(input.limit || 10, 100);
@@ -21,7 +21,7 @@ export class SupabaseActivityLogRepository implements IActivityLogRepository {
     let query = admin
       .from('activity_logs')
       .select('*', { count: 'exact' })
-      .eq('user_id', userId)
+      .eq('organization_id', orgId)
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1);
 
@@ -60,10 +60,11 @@ export class SupabaseActivityLogRepository implements IActivityLogRepository {
     };
   }
 
-  async create(userId: string, input: CreateActivityLogInput): Promise<void> {
+  async create(orgId: string, input: CreateActivityLogInput): Promise<void> {
     const admin = this.supabase.getAdmin();
     const { error } = await admin.from('activity_logs').insert({
-      user_id: userId,
+      user_id: input.userId,
+      organization_id: orgId,
       action: input.action,
       resource_type: input.resourceType,
       resource_id: input.resourceId || null,

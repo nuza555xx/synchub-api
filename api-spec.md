@@ -4,6 +4,8 @@
 >
 > **Auth:** Supabase Auth — ทุก request (ยกเว้น Auth endpoints) ต้องส่ง `Authorization: Bearer <supabase_access_token>`
 >
+> **Organization Context:** Org-scoped endpoints ต้องส่ง `X-Organization-Id: <uuid>` header
+>
 > **Database:** Supabase PostgreSQL
 
 ---
@@ -20,6 +22,8 @@
 8. [Quick Replies (Templates)](#8-quick-replies-templates)
 9. [Activity Logs](#9-activity-logs)
 10. [Webhooks](#10-webhooks)
+11. [Organizations](#11-organizations)
+12. [Plans](#12-plans)
 
 ---
 
@@ -1027,6 +1031,249 @@ posts (1:N post_platforms)
 inbox_items
   └─ quick_replies (reference for reply)
 ```
+
+---
+
+## Organization Context Header
+
+ทุก endpoint ที่มี 🔒 (ยกเว้น Auth, Plans, และ Organization list/create) ต้องส่ง header:
+
+```
+X-Organization-Id: <uuid>
+```
+
+Middleware จะ validate membership และ load plan limits เข้า context
+
+---
+
+## 11. Organizations
+
+### GET `/organizations`
+
+List organizations ที่ user เป็นสมาชิก 🔒 Auth only (ไม่ต้อง X-Organization-Id)
+
+**Response:** `200 OK`
+
+```json
+{
+  "result": [
+    {
+      "id": "uuid",
+      "name": "My Workspace",
+      "slug": "my-workspace",
+      "ownerId": "uuid",
+      "role": "admin",
+      "plan": {
+        "id": "uuid",
+        "name": "free",
+        "displayName": "Free"
+      },
+      "memberCount": 1,
+      "createdAt": "2025-01-01T00:00:00Z"
+    }
+  ]
+}
+```
+
+### POST `/organizations`
+
+สร้าง organization ใหม่ 🔒 Auth only
+
+**Request Body:**
+
+```json
+{
+  "name": "My Agency",
+  "slug": "my-agency"
+}
+```
+
+**Response:** `201 Created`
+
+```json
+{
+  "result": {
+    "id": "uuid",
+    "name": "My Agency",
+    "slug": "my-agency",
+    "ownerId": "uuid",
+    "plan": { "id": "uuid", "name": "free", "displayName": "Free" },
+    "memberCount": 1,
+    "createdAt": "2025-01-01T00:00:00Z"
+  }
+}
+```
+
+### PATCH `/organizations/:id`
+
+Update organization 🔒 Requires `org.update` permission (admin)
+
+**Headers:** `X-Organization-Id: <uuid>`
+
+**Request Body:**
+
+```json
+{
+  "name": "Updated Name",
+  "slug": "updated-slug"
+}
+```
+
+**Response:** `200 OK`
+
+### DELETE `/organizations/:id`
+
+Delete organization 🔒 Requires `org.delete` permission (admin, owner only)
+
+**Headers:** `X-Organization-Id: <uuid>`
+
+**Response:** `200 OK`
+
+### GET `/organizations/:id/members`
+
+List members 🔒 Requires `team.view` permission
+
+**Headers:** `X-Organization-Id: <uuid>`
+
+**Response:** `200 OK`
+
+```json
+{
+  "result": [
+    {
+      "id": "uuid",
+      "userId": "uuid",
+      "email": "user@example.com",
+      "fullName": "John Doe",
+      "role": "admin",
+      "status": "active",
+      "joinedAt": "2025-01-01T00:00:00Z"
+    }
+  ]
+}
+```
+
+### POST `/organizations/:id/members`
+
+Invite member 🔒 Requires `team.invite` permission (admin). Plan limit enforced.
+
+**Headers:** `X-Organization-Id: <uuid>`
+
+**Request Body:**
+
+```json
+{
+  "email": "newmember@example.com",
+  "role": "editor"
+}
+```
+
+**Response:** `201 Created`
+
+### PATCH `/organizations/:id/members/:memberId/role`
+
+Change member role 🔒 Requires `team.change_role` permission (admin)
+
+**Headers:** `X-Organization-Id: <uuid>`
+
+**Request Body:**
+
+```json
+{
+  "role": "moderator"
+}
+```
+
+**Response:** `200 OK`
+
+### DELETE `/organizations/:id/members/:memberId`
+
+Remove member 🔒 Requires `team.remove` permission (admin)
+
+**Headers:** `X-Organization-Id: <uuid>`
+
+**Response:** `200 OK`
+
+---
+
+## 12. Plans
+
+### GET `/plans`
+
+List all available plans (public, no auth required)
+
+**Response:** `200 OK`
+
+```json
+{
+  "result": [
+    {
+      "id": "uuid",
+      "name": "free",
+      "displayName": "Free",
+      "price": 0,
+      "billingCycle": "monthly",
+      "limits": {
+        "maxMembers": 1,
+        "maxSocialAccounts": 3,
+        "maxPostsPerMonth": 30,
+        "maxScheduledPosts": 10,
+        "maxMediaStorageMb": 500
+      },
+      "features": {
+        "analytics": false,
+        "bulkScheduling": false,
+        "teamCollaboration": false,
+        "prioritySupport": false,
+        "customBranding": false,
+        "apiAccess": false
+      }
+    }
+  ]
+}
+```
+
+---
+
+## RBAC Permissions
+
+| Permission | Allowed Roles |
+|---|---|
+| `org.update` | admin |
+| `org.delete` | admin |
+| `team.view` | admin, editor, moderator, viewer |
+| `team.invite` | admin |
+| `team.change_role` | admin |
+| `team.remove` | admin |
+| `social.view` | admin, editor, moderator, viewer |
+| `social.connect` | admin |
+| `social.disconnect` | admin |
+| `social.refresh` | admin, editor |
+| `post.view` | admin, editor, moderator, viewer |
+| `post.create` | admin, editor |
+| `post.edit` | admin, editor |
+| `post.delete` | admin |
+| `post.publish` | admin, editor |
+| `post.schedule` | admin, editor |
+| `activity_log.view` | admin |
+
+---
+
+## Error Codes (Organization & Plan)
+
+| Code | HTTP | Description |
+|---|---|---|
+| `ORG400001` | 400 | Invalid organization input |
+| `ORG400002` | 400 | Organization slug already taken |
+| `ORG404001` | 404 | Organization not found |
+| `ORG403001` | 403 | Not a member of this organization |
+| `ORG403002` | 403 | Insufficient permissions |
+| `TEAM400001` | 400 | Invalid member input |
+| `TEAM404001` | 404 | Member not found |
+| `TEAM409001` | 409 | User already a member |
+| `PLAN404001` | 404 | Plan not found |
+| `PLAN403001` | 403 | Feature not available on current plan |
+| `PLAN403002` | 403 | Plan limit reached |
 
 ---
 

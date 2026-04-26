@@ -22,6 +22,7 @@ create index if not exists idx_activity_logs_created_at
 -- RLS
 alter table public.activity_logs enable row level security;
 
+drop policy if exists "Users can view own activity logs" on public.activity_logs;
 create policy "Users can view own activity logs"
   on public.activity_logs for select
   using (auth.uid() = user_id);

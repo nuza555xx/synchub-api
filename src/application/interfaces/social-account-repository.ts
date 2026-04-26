@@ -12,11 +12,11 @@ import {
 } from '@/application/dto/social-account.dto';
 
 export interface ISocialAccountRepository {
-  listByUser(userId: string): Promise<SocialAccountOutput[]>;
-  getHealth(socialAccountId: string, userId: string): Promise<SocialAccountHealthOutput>;
+  listByOrganization(orgId: string): Promise<SocialAccountOutput[]>;
+  getHealth(socialAccountId: string, orgId: string): Promise<SocialAccountHealthOutput>;
   connect(userId: string, input: ConnectSocialInput): Promise<ConnectSocialOutput>;
   handleCallback(input: SocialCallbackInput): Promise<SocialCallbackOutput>;
-  refreshToken(userId: string, input: RefreshSocialTokenInput): Promise<RefreshSocialTokenOutput>;
-  disconnect(userId: string, input: DisconnectSocialInput): Promise<void>;
+  refreshToken(orgId: string, input: RefreshSocialTokenInput): Promise<RefreshSocialTokenOutput>;
+  disconnect(orgId: string, userId: string, input: DisconnectSocialInput): Promise<void>;
   handleOAuthError(input: OAuthErrorInput): Promise<void>;
 }

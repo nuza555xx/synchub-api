@@ -7,3 +7,7 @@ export function getUserId(ctx: { state: AuthState }): string {
 export function getAccessToken(ctx: { state: AuthState }): string {
   return ctx.state.accessToken;
 }
+
+export function getOrganizationId(ctx: { state: AuthState }): string {
+  return ctx.state.organizationId!;
+}

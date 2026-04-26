@@ -8,7 +8,7 @@ import type {
   DeleteDraftMediaCtx,
   PublishPostCtx,
 } from './types';
-import { getUserId } from '@/types/context';
+import { getUserId, getOrganizationId } from '@/types/context';
 import { CreateDraftPostUseCase } from '@/application/use-cases/posts/create-post';
 import { UpdateDraftPostUseCase } from '@/application/use-cases/posts/update-post';
 import { GetDraftPostUseCase } from '@/application/use-cases/posts/get-post';
@@ -46,7 +46,8 @@ export class DraftPostController {
     }
 
     const userId = getUserId(ctx);
-    const result = await this.createUseCase.execute(userId, {
+    const orgId = getOrganizationId(ctx);
+    const result = await this.createUseCase.execute(orgId, userId, {
       name: parsed.data.name,
       description: parsed.data.description,
       content: parsed.data.content,
@@ -74,15 +75,10 @@ export class DraftPostController {
     }
 
     const userId = getUserId(ctx);
-    const result = await this.updateUseCase.execute(userId, {
+    const orgId = getOrganizationId(ctx);
+    const result = await this.updateUseCase.execute(orgId, {
       id: idParsed.data.id,
-      name: bodyParsed.data.name,
-      description: bodyParsed.data.description,
-      content: bodyParsed.data.content,
-      socialAccountIds: bodyParsed.data.socialAccountIds,
-      mediaPaths: bodyParsed.data.mediaPaths,
-      scheduledAt: bodyParsed.data.scheduledAt,
-      platformSettings: bodyParsed.data.platformSettings,
+      ...bodyParsed.data,
     });
 
     ctx.status = 200;
@@ -99,8 +95,8 @@ export class DraftPostController {
       throw new ValidationError(parsed.error.errors[0].message, EC.POST400001);
     }
 
-    const userId = getUserId(ctx);
-    const result = await this.getUseCase.execute(parsed.data.id, userId);
+    const orgId = getOrganizationId(ctx);
+    const result = await this.getUseCase.execute(parsed.data.id, orgId);
 
     ctx.status = 200;
     ctx.body = {
@@ -111,8 +107,8 @@ export class DraftPostController {
   };
 
   list = async (ctx: ListDraftsCtx): Promise<void> => {
-    const userId = getUserId(ctx);
-    const result = await this.listUseCase.execute(userId);
+    const orgId = getOrganizationId(ctx);
+    const result = await this.listUseCase.execute(orgId);
 
     ctx.status = 200;
     ctx.body = {
@@ -128,8 +124,8 @@ export class DraftPostController {
       throw new ValidationError(parsed.error.errors[0].message, EC.POST400001);
     }
 
-    const userId = getUserId(ctx);
-    await this.deleteUseCase.execute(parsed.data.id, userId);
+    const orgId = getOrganizationId(ctx);
+    await this.deleteUseCase.execute(parsed.data.id, orgId);
 
     ctx.status = 200;
     ctx.body = {
@@ -150,7 +146,8 @@ export class DraftPostController {
     }
 
     const userId = getUserId(ctx);
-    const result = await this.uploadMediaUseCase.execute(userId, {
+    const orgId = getOrganizationId(ctx);
+    const result = await this.uploadMediaUseCase.execute(orgId, {
       draftId: parsed.data.id,
       file: {
         buffer: file.buffer,
@@ -179,7 +176,8 @@ export class DraftPostController {
     }
 
     const userId = getUserId(ctx);
-    await this.deleteMediaUseCase.execute(userId, {
+    const orgId = getOrganizationId(ctx);
+    await this.deleteMediaUseCase.execute(orgId, {
       draftId: idParsed.data.id,
       mediaPath: bodyParsed.data.mediaPath,
     });
@@ -198,7 +196,8 @@ export class DraftPostController {
     }
 
     const userId = getUserId(ctx);
-    const result = await this.publishUseCase.execute(userId, {
+    const orgId = getOrganizationId(ctx);
+    const result = await this.publishUseCase.execute(orgId, {
       postId: idParsed.data.id,
     });
 
